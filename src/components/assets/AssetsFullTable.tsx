@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useAssets } from "../../hooks/useAssets";
 import { Link } from "react-router-dom";
 import { Eye, Pencil, MoreHorizontal, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import type { AssetsFilters } from "./AssetsFilterBar";
 
 type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
 
@@ -14,6 +16,44 @@ interface Activo {
   estado: Estado;
   bateria: number | null;
   ultima_conexion: string;
+  numero_documento: string;
+}
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return "Sin datos";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Hace instantes";
+  if (mins < 60) return `Hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Hace ${hours} horas`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days} día${days > 1 ? "s" : ""}`;
+}
+
+function mapActivo(a: any): Activo {
+  return {
+    codigo: a.codigo,
+    nombre: a.nombre_equipo ?? "Sin nombre",
+    usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
+    cargo: a.departamento ?? "",
+    ubicacion: a.ubicacion_ciudad ?? a.ciudad_asignada ?? "—",
+    sede: a.ciudad_asignada ?? "—",
+    estado: (a.estado as Estado) ?? "sin_conexion",
+    bateria: a.bateria ?? null,
+    ultima_conexion: timeAgo(a.timestamp_reporte),
+    numero_documento: a.numero_docume ?? "",
+  };
+}
+
+function getPageWindow(current: number, total: number): (number | "...")[] {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages: (number | "...")[] = [1];
+  if (current > 3) pages.push("...");
+  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p);
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
 }
 
 const estadoBadge: Record<Estado, { label: string; className: string }> = {
@@ -21,97 +61,6 @@ const estadoBadge: Record<Estado, { label: string; className: string }> = {
   sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600" },
   fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
 };
-
-const mockData: Activo[] = [
-  {
-    codigo: "P155",
-    nombre: "HP EliteBook 840",
-    usuario: "Juan Pérez",
-    cargo: "Desarrollador",
-    ubicacion: "Barranquilla",
-    sede: "Oficina Principal",
-    estado: "en_linea",
-    bateria: 82,
-    ultima_conexion: "Hace 2 min",
-  },
-  {
-    codigo: "P098",
-    nombre: "Lenovo ThinkPad L14",
-    usuario: "María Gómez",
-    cargo: "Analista",
-    ubicacion: "Bogotá",
-    sede: "Oficina Norte",
-    estado: "en_linea",
-    bateria: 65,
-    ultima_conexion: "Hace 15 min",
-  },
-  {
-    codigo: "P120",
-    nombre: "Dell Latitude 5420",
-    usuario: "Andrés Vargas",
-    cargo: "Soporte TI",
-    ubicacion: "Medellín",
-    sede: "Oficina Centro",
-    estado: "en_linea",
-    bateria: 34,
-    ultima_conexion: "Hace 35 min",
-  },
-  {
-    codigo: "P073",
-    nombre: "HP ProBook 450 G8",
-    usuario: "Laura Martínez",
-    cargo: "Contadora",
-    ubicacion: "Cali",
-    sede: "Oficina Sur",
-    estado: "sin_conexion",
-    bateria: null,
-    ultima_conexion: "Hace 8 horas",
-  },
-  {
-    codigo: "P109",
-    nombre: "Lenovo ThinkPad E14",
-    usuario: "Carlos Ruiz",
-    cargo: "Comercial",
-    ubicacion: "Cartagena",
-    sede: "Sucursal",
-    estado: "sin_conexion",
-    bateria: null,
-    ultima_conexion: "Hace 1 día",
-  },
-  {
-    codigo: "P067",
-    nombre: "Dell Inspiron 15",
-    usuario: "Carolina López",
-    cargo: "Marketing",
-    ubicacion: "Bogotá",
-    sede: "Oficina Norte",
-    estado: "en_linea",
-    bateria: 90,
-    ultima_conexion: "Hace 5 min",
-  },
-  {
-    codigo: "P191",
-    nombre: "HP EliteBook 830",
-    usuario: "Felipe Sánchez",
-    cargo: "Desarrollador",
-    ubicacion: "Bucaramanga",
-    sede: "Sucursal",
-    estado: "en_linea",
-    bateria: 76,
-    ultima_conexion: "Hace 12 min",
-  },
-  {
-    codigo: "P133",
-    nombre: "MacBook Air M1",
-    usuario: "Natalia Díaz",
-    cargo: "Diseñadora",
-    ubicacion: "Bogotá",
-    sede: "Oficina Norte",
-    estado: "sin_conexion",
-    bateria: null,
-    ultima_conexion: "Hace 7 días",
-  },
-];
 
 function getInitials(nombre: string) {
   return nombre
@@ -150,12 +99,43 @@ function BateriaBar({ value }: { value: number | null }) {
 }
 
 const PAGE_SIZE_OPTIONS = [8, 20, 50];
-const TOTAL_RESULTS = 153;
 
-export default function AssetsFullTable() {
+export default function AssetsFullTable({ filters }: { filters: AssetsFilters }) {
+  const { data, loading, error } = useAssets();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
-  const totalPages = Math.ceil(TOTAL_RESULTS / pageSize);
+
+  const mapped = useMemo(() => data.map(mapActivo), [data]);
+
+  const filtered = useMemo(() => {
+    const searchLower = filters.search.trim().toLowerCase();
+    return mapped.filter((a) => {
+      if (filters.estado !== "Todos" && a.estado !== filters.estado) return false;
+      if (filters.ubicacion !== "Todas" && a.ubicacion !== filters.ubicacion) return false;
+      if (filters.usuario !== "Todos" && a.usuario !== filters.usuario) return false;
+      if (filters.departamento !== "Todos" && a.cargo !== filters.departamento) return false;
+      if (searchLower) {
+        const haystack = `${a.codigo} ${a.nombre} ${a.usuario} ${a.numero_documento}`.toLowerCase();
+        if (!haystack.includes(searchLower)) return false;
+      }
+      return true;
+    });
+  }, [mapped, filters]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
+  const totalResults = filtered.length;
+  const totalPages = Math.ceil(totalResults / pageSize) || 1;
+  const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  if (loading) {
+    return <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-sm text-[#9898a0]">Cargando activos...</div>;
+  }
+  if (error) {
+    return <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-sm text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
@@ -178,7 +158,7 @@ export default function AssetsFullTable() {
             </tr>
           </thead>
           <tbody>
-            {mockData.map((activo) => {
+            {pageData.map((activo) => {
               const badge = estadoBadge[activo.estado];
               return (
                 <tr key={activo.codigo} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -237,7 +217,7 @@ export default function AssetsFullTable() {
       {/* Paginación */}
       <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 flex-wrap gap-3">
         <p className="text-xs text-[#9898a0]">
-          Mostrando {(page - 1) * pageSize + 1} a {Math.min(page * pageSize, TOTAL_RESULTS)} de {TOTAL_RESULTS} resultados
+          Mostrando {(page - 1) * pageSize + 1} a {Math.min(page * pageSize, totalResults)} de {totalResults} resultados
         </p>
 
         <div className="flex items-center gap-1.5">
@@ -249,28 +229,22 @@ export default function AssetsFullTable() {
             <ChevronLeft size={15} />
           </button>
 
-          {Array.from({ length: Math.min(3, totalPages) }, (_, i) => i + 1).map((n) => (
-            <button
-              key={n}
-              onClick={() => setPage(n)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-                page === n ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-
-          {totalPages > 3 && <span className="text-[#9898a0] text-xs px-1">...</span>}
-          {totalPages > 3 && (
-            <button
-              onClick={() => setPage(totalPages)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-                page === totalPages ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              {totalPages}
-            </button>
+          {getPageWindow(page, totalPages).map((n, i) =>
+            n === "..." ? (
+              <span key={`ellipsis-${i}`} className="text-[#9898a0] text-xs px-1">
+                ...
+              </span>
+            ) : (
+              <button
+                key={n}
+                onClick={() => setPage(n as number)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${
+                  page === n ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                {n}
+              </button>
+            ),
           )}
 
           <button

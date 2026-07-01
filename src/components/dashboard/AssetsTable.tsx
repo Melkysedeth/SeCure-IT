@@ -1,4 +1,7 @@
 import { Eye, MapPin, MoreHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { useAssets } from "../../hooks/useAssets";
 
 type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
 
@@ -18,13 +21,29 @@ const estadoBadge: Record<Estado, { label: string; className: string }> = {
   fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
 };
 
-const mockData: Activo[] = [
-  { codigo: "P155", nombre: "HP EliteBook 840", usuario: "juan.perez", ubicacion: "Barranquilla", estado: "en_linea", bateria: 82, ultima_conexion: "Hace 2 min" },
-  { codigo: "P098", nombre: "Lenovo ThinkPad L14", usuario: "maria.gomez", ubicacion: "Bogotá", estado: "en_linea", bateria: 65, ultima_conexion: "Hace 15 min" },
-  { codigo: "P120", nombre: "Dell Latitude 5420", usuario: "administrador", ubicacion: "Bogotá", estado: "en_linea", bateria: 34, ultima_conexion: "Hace 35 min" },
-  { codigo: "P073", nombre: "Asus VivoBook 15", usuario: "sin usuario", ubicacion: "—", estado: "sin_conexion", bateria: 0, ultima_conexion: "Hace 8 días" },
-  { codigo: "P131", nombre: "HP ProBook 450", usuario: "camila.rojas", ubicacion: "Montería", estado: "en_linea", bateria: 91, ultima_conexion: "Hace 3 horas" },
-];
+function timeAgo(iso: string | null): string {
+  if (!iso) return "Sin datos";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Hace instantes";
+  if (mins < 60) return `Hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Hace ${hours} horas`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days} día${days > 1 ? "s" : ""}`;
+}
+
+function mapActivo(a: any): Activo {
+  return {
+    codigo: a.codigo,
+    nombre: a.nombre_equipo ?? "Sin nombre",
+    usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
+    ubicacion: a.ubicacion_ciudad ?? a.ciudad_asignada ?? "—",
+    estado: (a.estado as Estado) ?? "sin_conexion",
+    bateria: a.bateria ?? 0,
+    ultima_conexion: timeAgo(a.timestamp_reporte),
+  };
+}
 
 function BateriaBar({ value }: { value: number }) {
   const color = value > 50 ? "bg-green-500" : value > 20 ? "bg-yellow-400" : "bg-red-500";
@@ -39,6 +58,19 @@ function BateriaBar({ value }: { value: number }) {
 }
 
 export default function AssetsTable() {
+  const { data, loading } = useAssets();
+
+  const recientes = useMemo(() => {
+    return [...data]
+      .sort((a: any, b: any) => new Date(b.timestamp_reporte ?? 0).getTime() - new Date(a.timestamp_reporte ?? 0).getTime())
+      .slice(0, 10)
+      .map(mapActivo);
+  }, [data]);
+
+  if (loading) {
+    return <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-sm text-[#9898a0]">Cargando activos...</div>;
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
       {/* Header */}
@@ -63,7 +95,7 @@ export default function AssetsTable() {
             </tr>
           </thead>
           <tbody>
-            {mockData.map((activo) => {
+            {recientes.map((activo) => {
               const badge = estadoBadge[activo.estado];
               return (
                 <tr key={activo.codigo} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -78,9 +110,9 @@ export default function AssetsTable() {
                   <td className="px-5 py-3 text-[#686971] text-xs">{activo.ultima_conexion}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2 text-[#9898a0]">
-                      <button className="hover:text-[#519d99] transition-colors">
+                      <Link to={`/activos/${activo.codigo}`} className="hover:text-[#519d99] transition-colors">
                         <Eye size={15} />
-                      </button>
+                      </Link>
                       <button className="hover:text-[#519d99] transition-colors">
                         <MapPin size={15} />
                       </button>

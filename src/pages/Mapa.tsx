@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Map as MapIcon, Search, SlidersHorizontal, X, MapPin, Laptop } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { useAssets } from "../hooks/useAssets";
 
 // ── Tipos y datos mock ──────────────────────────────
 type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
@@ -18,6 +19,7 @@ interface ActivoMapa {
   ip: string;
   ultima_conexion: string;
   sistema_op: string;
+  tipo: string;
 }
 
 interface CiudadGrupo {
@@ -39,141 +41,63 @@ const estadoLabel: Record<Estado, string> = {
   fuera_sede: "Fuera de sede",
 };
 
-const ciudadesData: CiudadGrupo[] = [
-  {
-    nombre: "Barranquilla",
-    lat: 10.9685,
-    lng: -74.7813,
-    activos: [
-      {
-        codigo: "P155",
-        nombre: "HP EliteBook 840",
-        usuario: "Juan Pérez",
-        cargo: "Desarrollador",
-        ciudad: "Barranquilla",
-        sede: "Oficina Principal",
-        estado: "en_linea",
-        bateria: 82,
-        ip: "192.168.1.100",
-        ultima_conexion: "Hace 2 minutos",
-        sistema_op: "Windows 11 Pro",
-      },
-    ],
-  },
-  {
-    nombre: "Cartagena",
-    lat: 10.391,
-    lng: -75.4794,
-    activos: [
-      {
-        codigo: "P109",
-        nombre: "Lenovo ThinkPad E14",
-        usuario: "Carlos Ruiz",
-        cargo: "Comercial",
-        ciudad: "Cartagena",
-        sede: "Sucursal",
-        estado: "en_linea",
-        bateria: 70,
-        ip: "192.168.2.55",
-        ultima_conexion: "Hace 20 minutos",
-        sistema_op: "Windows 11 Pro",
-      },
-    ],
-  },
-  {
-    nombre: "Montería",
-    lat: 8.7479,
-    lng: -75.8814,
-    activos: [
-      {
-        codigo: "P131",
-        nombre: "HP ProBook 450",
-        usuario: "Camila Rojas",
-        cargo: "Recursos Humanos",
-        ciudad: "Montería",
-        sede: "Sucursal",
-        estado: "fuera_sede",
-        bateria: 91,
-        ip: "192.168.3.12",
-        ultima_conexion: "Hace 3 horas",
-        sistema_op: "Windows 10 Pro",
-      },
-    ],
-  },
-  {
-    nombre: "Medellín",
-    lat: 6.2442,
-    lng: -75.5812,
-    activos: [
-      {
-        codigo: "P120",
-        nombre: "Dell Latitude 5420",
-        usuario: "Andrés Vargas",
-        cargo: "Soporte TI",
-        ciudad: "Medellín",
-        sede: "Oficina Centro",
-        estado: "en_linea",
-        bateria: 34,
-        ip: "192.168.4.20",
-        ultima_conexion: "Hace 35 minutos",
-        sistema_op: "Windows 11 Pro",
-      },
-    ],
-  },
-  {
-    nombre: "Bogotá",
-    lat: 4.711,
-    lng: -74.0721,
-    activos: [
-      {
-        codigo: "P098",
-        nombre: "Lenovo ThinkPad L14",
-        usuario: "María Gómez",
-        cargo: "Analista",
-        ciudad: "Bogotá",
-        sede: "Oficina Norte",
-        estado: "en_linea",
-        bateria: 65,
-        ip: "192.168.1.25",
-        ultima_conexion: "Hace 15 minutos",
-        sistema_op: "Windows 11 Pro",
-      },
-      {
-        codigo: "P067",
-        nombre: "Dell Inspiron 15",
-        usuario: "Carolina López",
-        cargo: "Marketing",
-        ciudad: "Bogotá",
-        sede: "Oficina Norte",
-        estado: "en_linea",
-        bateria: 90,
-        ip: "192.168.1.30",
-        ultima_conexion: "Hace 5 minutos",
-        sistema_op: "Windows 11 Pro",
-      },
-    ],
-  },
-  {
-    nombre: "Villavicencio",
-    lat: 4.142,
-    lng: -73.6266,
-    activos: [
-      {
-        codigo: "P073",
-        nombre: "HP ProBook 450 G8",
-        usuario: "Laura Martínez",
-        cargo: "Contadora",
-        ciudad: "Villavicencio",
-        sede: "Oficina Sur",
-        estado: "sin_conexion",
-        bateria: null,
-        ip: "—",
-        ultima_conexion: "Hace 8 horas",
-        sistema_op: "Windows 10 Pro",
-      },
-    ],
-  },
-];
+function timeAgo(iso: string | null): string {
+  if (!iso) return "Sin datos";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Hace instantes";
+  if (mins < 60) return `Hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Hace ${hours} horas`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days} día${days > 1 ? "s" : ""}`;
+}
+
+function mapActivo(a: any): ActivoMapa {
+  return {
+    codigo: a.codigo,
+    nombre: a.nombre_equipo ?? "Sin nombre",
+    usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
+    cargo: a.departamento ?? "",
+    ciudad: a.ubicacion_ciudad ?? a.ciudad_asignada ?? "—",
+    sede: a.ciudad_asignada ?? "—",
+    estado: (a.estado as Estado) ?? "sin_conexion",
+    bateria: a.bateria ?? null,
+    ip: a.ip_publica ?? a.ip_local ?? "—",
+    ultima_conexion: timeAgo(a.timestamp_reporte),
+    sistema_op: a.sistema_op ?? "—",
+    tipo: a.tipo ?? "—",
+  };
+}
+
+function agruparPorCiudad(data: any[]): CiudadGrupo[] {
+  const grupos = new Map<string, { sumaLat: number; sumaLng: number; count: number; activos: ActivoMapa[] }>();
+
+  for (const raw of data) {
+    const nombre = raw.ubicacion_ciudad ?? raw.ciudad_asignada;
+    const lat = raw.latitud;
+    const lng = raw.longitud;
+    if (!nombre || lat == null || lng == null) continue;
+
+    const existente = grupos.get(nombre);
+    const activoMapeado = mapActivo(raw);
+    if (existente) {
+      existente.sumaLat += lat;
+      existente.sumaLng += lng;
+      existente.count += 1;
+      existente.activos.push(activoMapeado);
+    } else {
+      grupos.set(nombre, { sumaLat: lat, sumaLng: lng, count: 1, activos: [activoMapeado] });
+    }
+  }
+
+  return Array.from(grupos.entries()).map(([nombre, g]) => ({
+    nombre,
+    lat: g.sumaLat / g.count,
+    lng: g.sumaLng / g.count,
+    activos: g.activos,
+  }));
+}
 
 function getRadius(cantidad: number) {
   return Math.max(16, Math.min(30, 14 + cantidad * 3));
@@ -196,6 +120,8 @@ function RecenterButton() {
 
 // ── Componente principal ──────────────────────────────
 export default function Mapa() {
+  const { data, loading } = useAssets();
+  const ciudadesData = useMemo(() => agruparPorCiudad(data), [data]);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [selected, setSelected] = useState<ActivoMapa | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<Record<Estado, boolean>>({
@@ -203,12 +129,31 @@ export default function Mapa() {
     sin_conexion: true,
     fuera_sede: true,
   });
+  const [search, setSearch] = useState("");
+  const [ciudadFiltro, setCiudadFiltro] = useState("Todas");
+  const [tipoFiltro, setTipoFiltro] = useState("Todos");
 
   const totalEnLinea = ciudadesData.flatMap((c) => c.activos).filter((a) => a.estado === "en_linea").length;
   const totalSinConexion = ciudadesData.flatMap((c) => c.activos).filter((a) => a.estado === "sin_conexion").length;
   const totalFueraSede = ciudadesData.flatMap((c) => c.activos).filter((a) => a.estado === "fuera_sede").length;
 
-  const ciudadesFiltradas = ciudadesData.map((c) => ({ ...c, activos: c.activos.filter((a) => estadoFiltro[a.estado]) })).filter((c) => c.activos.length > 0);
+  const searchLower = search.trim().toLowerCase();
+  const ciudadesFiltradas = ciudadesData
+    .filter((c) => ciudadFiltro === "Todas" || c.nombre === ciudadFiltro)
+    .map((c) => ({
+      ...c,
+      activos: c.activos.filter((a) => {
+        if (!estadoFiltro[a.estado]) return false;
+        if (tipoFiltro !== "Todos" && a.tipo.toLowerCase() !== tipoFiltro.toLowerCase()) return false;
+        if (!searchLower) return true;
+        return a.nombre.toLowerCase().includes(searchLower) || a.codigo.toLowerCase().includes(searchLower) || a.usuario.toLowerCase().includes(searchLower);
+      }),
+    }))
+    .filter((c) => c.activos.length > 0);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-full text-sm text-[#9898a0]">Cargando mapa de activos...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-6 h-full">
@@ -229,6 +174,8 @@ export default function Mapa() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9898a0]" size={16} />
           <input
             type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar activo..."
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]"
           />
@@ -282,7 +229,11 @@ export default function Mapa() {
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-[#686971]">Ciudad</label>
-              <select className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-[#3d3d42] focus:outline-none focus:ring-2 focus:ring-[#519d99]/30">
+              <select
+                value={ciudadFiltro}
+                onChange={(e) => setCiudadFiltro(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-[#3d3d42] focus:outline-none focus:ring-2 focus:ring-[#519d99]/30"
+              >
                 <option>Todas</option>
                 {ciudadesData.map((c) => (
                   <option key={c.nombre}>{c.nombre}</option>
@@ -292,16 +243,28 @@ export default function Mapa() {
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-[#686971]">Tipo de activo</label>
-              <select className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-[#3d3d42] focus:outline-none focus:ring-2 focus:ring-[#519d99]/30">
+              <select
+                value={tipoFiltro}
+                onChange={(e) => setTipoFiltro(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-[#3d3d42] focus:outline-none focus:ring-2 focus:ring-[#519d99]/30"
+              >
                 <option>Todos</option>
-                <option>Laptop</option>
-                <option>Tablet</option>
-                <option>Celular</option>
-                <option>Desktop</option>
+                <option value="laptop">Laptop</option>
+                <option value="tablet">Tablet</option>
+                <option value="celular">Celular</option>
+                <option value="desktop">Desktop</option>
               </select>
             </div>
 
-            <button onClick={() => setEstadoFiltro({ en_linea: true, sin_conexion: true, fuera_sede: true })} className="text-xs text-[#519d99] font-medium hover:underline text-left">
+            <button
+              onClick={() => {
+                setEstadoFiltro({ en_linea: true, sin_conexion: true, fuera_sede: true });
+                setSearch("");
+                setCiudadFiltro("Todas");
+                setTipoFiltro("Todos");
+              }}
+              className="text-xs text-[#519d99] font-medium hover:underline text-left"
+            >
               Restablecer filtros
             </button>
           </div>

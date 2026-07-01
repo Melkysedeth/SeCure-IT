@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { Monitor, Plus, Download } from "lucide-react";
 import KPICards from "../components/dashboard/KPICards";
-import AssetsFilterBar from "../components/assets/AssetsFilterBar";
+import AssetsFilterBar, { type AssetsFilters } from "../components/assets/AssetsFilterBar";
 import AssetsFullTable from "../components/assets/AssetsFullTable";
 import RegisterAssetModal from "../components/assets/RegisterAssetModal";
 import type { NuevoActivoForm } from "../types";
 
 export default function Activos() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [filters, setFilters] = useState<AssetsFilters>({
+    search: "",
+    estado: "Todos",
+    ubicacion: "Todas",
+    usuario: "Todos",
+    departamento: "Todos",
+  });
 
   function handleSave(data: NuevoActivoForm) {
     console.log("Nuevo activo:", data); // luego: insertar en Supabase
@@ -39,8 +46,8 @@ export default function Activos() {
       </div>
 
       <KPICards />
-      <AssetsFilterBar />
-      <AssetsFullTable />
+      <AssetsFilterBar filters={filters} onChange={setFilters} />
+      <AssetsFullTable filters={filters} />
 
       <RegisterAssetModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSave} />
     </div>
