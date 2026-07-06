@@ -1,48 +1,59 @@
 import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useMemo } from "react";
-import { useAssets } from "../../hooks/useAssets";
+import { useAlerts } from "../../hooks/useAlerts";
+import { mapAlerta, SEVERITY_META, type Severidad } from "../../lib/alerts";
 
-export interface AssetsFilters {
+export interface AlertsFilters {
   search: string;
-  estado: string;
-  ubicacion: string;
-  usuario: string;
-  departamento: string;
+  estado: "Todos" | "Activa" | "PendienteConfirmacion" | "Resuelta";
+  severidad: "Todas" | Severidad;
+  tipo: string;
+  ciudad: string;
 }
 
 interface Props {
-  filters: AssetsFilters;
-  onChange: (filters: AssetsFilters) => void;
+  filters: AlertsFilters;
+  onChange: (filters: AlertsFilters) => void;
 }
 
 const estadoOptions = [
   { value: "Todos", label: "Todos" },
-  { value: "en_linea", label: "En línea" },
-  { value: "sin_conexion", label: "Sin conexión" },
-  { value: "fuera_sede", label: "Fuera de sede" },
+  { value: "Activa", label: "Activa" },
+  { value: "PendienteConfirmacion", label: "Pendiente por confirmar" },
+  { value: "Resuelta", label: "Resuelta" },
 ];
+
+const severidadOptions = [{ value: "Todas", label: "Todas" }, ...(Object.keys(SEVERITY_META) as Severidad[]).map((s) => ({ value: s, label: SEVERITY_META[s].label }))];
 
 function uniqueSorted(values: (string | null | undefined)[]): string[] {
   const set = new Set(values.filter((v): v is string => !!v && v.trim() !== ""));
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
-export default function AssetsFilterBar({ filters, onChange }: Props) {
-  const { data } = useAssets();
+export const DEFAULT_ALERTS_FILTERS: AlertsFilters = {
+  search: "",
+  estado: "Todos",
+  severidad: "Todas",
+  tipo: "Todos",
+  ciudad: "Todas",
+};
 
-  const ubicaciones = useMemo(() => uniqueSorted(data.map((a: any) => a.ubicacion_ciudad ?? a.ciudad_asignada)), [data]);
-  const usuarios = useMemo(() => uniqueSorted(data.map((a: any) => a.nombre_responsable ?? a.usuario_activo)), [data]);
-  const departamentos = useMemo(() => uniqueSorted(data.map((a: any) => a.departamento)), [data]);
+export default function AlertsFilterBar({ filters, onChange }: Props) {
+  const { data } = useAlerts();
+  const mapped = useMemo(() => data.map(mapAlerta), [data]);
 
-  function set<K extends keyof AssetsFilters>(key: K, value: AssetsFilters[K]) {
+  const tipos = useMemo(() => uniqueSorted(mapped.map((a) => a.tipo)), [mapped]);
+  const ciudades = useMemo(() => uniqueSorted(mapped.map((a) => a.ciudad)), [mapped]);
+
+  function set<K extends keyof AlertsFilters>(key: K, value: AlertsFilters[K]) {
     onChange({ ...filters, [key]: value });
   }
 
-  const selects: { key: keyof AssetsFilters; label: string; options: { value: string; label: string }[] }[] = [
+  const selects: { key: keyof AlertsFilters; label: string; options: { value: string; label: string }[] }[] = [
     { key: "estado", label: "Estado", options: estadoOptions },
-    { key: "ubicacion", label: "Ubicación", options: [{ value: "Todas", label: "Todas" }, ...ubicaciones.map((u) => ({ value: u, label: u }))] },
-    { key: "usuario", label: "Usuario", options: [{ value: "Todos", label: "Todos" }, ...usuarios.map((u) => ({ value: u, label: u }))] },
-    { key: "departamento", label: "Departamento", options: [{ value: "Todos", label: "Todos" }, ...departamentos.map((d) => ({ value: d, label: d }))] },
+    { key: "severidad", label: "Severidad", options: severidadOptions },
+    { key: "tipo", label: "Tipo de alerta", options: [{ value: "Todos", label: "Todos" }, ...tipos.map((t) => ({ value: t, label: t }))] },
+    { key: "ciudad", label: "Ubicación", options: [{ value: "Todas", label: "Todas" }, ...ciudades.map((c) => ({ value: c, label: c }))] },
   ];
 
   return (
@@ -55,7 +66,7 @@ export default function AssetsFilterBar({ filters, onChange }: Props) {
             type="text"
             value={filters.search}
             onChange={(e) => set("search", e.target.value)}
-            placeholder="Buscar por código, nombre, usuario o documento..."
+            placeholder="Buscar por alerta, activo o responsable..."
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]"
           />
         </div>
@@ -67,8 +78,8 @@ export default function AssetsFilterBar({ filters, onChange }: Props) {
           <label className="text-xs font-medium text-[#686971]">{label}</label>
           <div className="relative">
             <select
-              value={filters[key]}
-              onChange={(e) => set(key, e.target.value)}
+              value={filters[key] as string}
+              onChange={(e) => set(key, e.target.value as AlertsFilters[typeof key])}
               className="w-full appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-lg text-[#3d3d42] focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99] cursor-pointer"
             >
               {options.map((opt) => (
@@ -84,7 +95,7 @@ export default function AssetsFilterBar({ filters, onChange }: Props) {
 
       {/* Botón limpiar */}
       <button
-        onClick={() => onChange({ search: "", estado: "Todos", ubicacion: "Todas", usuario: "Todos", departamento: "Todos" })}
+        onClick={() => onChange(DEFAULT_ALERTS_FILTERS)}
         className="flex-shrink-0 border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors"
       >
         <SlidersHorizontal size={15} />

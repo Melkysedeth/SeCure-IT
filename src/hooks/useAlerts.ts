@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { supabase } from "../lib/supabase";
+import { useCachedQuery } from "../lib/queryCache";
+import type { AlertaRaw } from "../lib/alerts";
 
 interface UseAlertsOptions {
   limit?: number;
@@ -8,30 +10,23 @@ interface UseAlertsOptions {
 
 export function useAlerts(options: UseAlertsOptions = {}) {
   const { limit, activoId } = options;
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
+  // La key identifica de forma única esta combinación de filtros: dos componentes
+  // que pidan los mismos parámetros comparten resultado y loading automáticamente.
+  const key = `alertas_con_activo:${activoId ?? "all"}:${limit ?? "no-limit"}`;
 
-    let query = supabase.from("alertas_con_activo").select("*").order("created_at", { ascending: false });
+  const fetcher = useMemo(() => {
+    return async () => {
+      let query = supabase.from("alertas_con_activo").select("*").order("created_at", { ascending: false });
+      if (activoId) query = query.eq("activo_id", activoId);
+      if (limit) query = query.limit(limit);
 
-    if (activoId) query = query.eq("activo_id", activoId);
-    if (limit) query = query.limit(limit);
-
-    query.then(({ data, error }) => {
-      if (!active) return;
-      if (error) setError(error.message);
-      else setData(data ?? []);
-      setLoading(false);
-    });
-
-    return () => {
-      active = false;
+      const { data, error } = await query;
+      return { data: (data ?? []) as AlertaRaw[], error: error?.message ?? null };
     };
-  }, [limit, activoId]);
+  }, [activoId, limit]);
 
-  return { data, loading, error };
+  const { data, loading, error, refetch } = useCachedQuery<AlertaRaw[]>(key, fetcher);
+
+  return { data: data ?? [], loading, error, refetch };
 }

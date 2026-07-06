@@ -17,13 +17,13 @@ const bottomItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 min-h-screen bg-[#519d99] text-white flex flex-col">
+    <aside className="w-70 min-h-screen bg-[#519d99] text-white flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-5 border-b border-white/20">
-        <Shield className="text-white" size={22} />
+        <Shield className="text-white" size={30} />
         <div>
-          <p className="font-bold text-[15px] leading-tight text-white">SeCure-IT</p>
-          <p className="text-[10px] text-white/60">Activos Tecnológicos</p>
+          <p className="font-bold text-[18px] leading-tight text-white">SeCure-IT</p>
+          <p className="text-[11px] text-white/60">Activos Tecnológicos</p>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export default function Sidebar() {
       </div>
 
       {/* Version */}
-      <div className="px-4 py-3 text-[10px] text-white/40">SeCure-IT v1.0.0 © 2025</div>
+      <div className="px-4 py-3 text-[11px] text-white/40">SeCure-IT v1.0.0 © 2026</div>
     </aside>
   );
 }

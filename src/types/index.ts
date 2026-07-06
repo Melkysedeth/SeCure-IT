@@ -76,4 +76,5 @@ export interface NuevoActivoForm {
   almacenamiento: string;
   direccion_mac: string;
   estado_inicial: EstadoActivo;
+  ciudad_asignada: string;
 }

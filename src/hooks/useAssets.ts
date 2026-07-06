@@ -1,6 +1,5 @@
-// src/hooks/useAssets.ts
-import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { useCachedQuery } from "../lib/queryCache";
 
 export interface ActivoConReporte {
   id: string;
@@ -16,26 +15,14 @@ export interface ActivoConReporte {
   timestamp_reporte: string | null;
 }
 
+const ASSETS_KEY = "activos_con_reporte:all";
+
+async function fetchAssets() {
+  const { data, error } = await supabase.from("activos_con_reporte").select("*");
+  return { data: (data ?? []) as ActivoConReporte[], error: error?.message ?? null };
+}
+
 export function useAssets() {
-  const [data, setData] = useState<ActivoConReporte[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    supabase
-      .from("activos_con_reporte")
-      .select("*")
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) setError(error.message);
-        else setData(data ?? []);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return { data, loading, error };
+  const { data, loading, error, refetch } = useCachedQuery<ActivoConReporte[]>(ASSETS_KEY, fetchAssets);
+  return { data: data ?? [], loading, error, refetch };
 }

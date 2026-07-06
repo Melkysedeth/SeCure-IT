@@ -9,6 +9,7 @@ import Configuracion from "./pages/Configuracion";
 import Usuarios from "./pages/Usuarios";
 import DetalleActivo from "./pages/DetalleActivo";
 import Alertas from "./pages/Alertas";
+import Historial from "./pages/Historial";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -39,7 +40,7 @@ export default function App() {
           <Route path="activos/:codigo" element={<DetalleActivo />} />
           <Route path="mapa" element={<Mapa />} />
           <Route path="alertas" element={<Alertas />} />
-          <Route path="historial" element={<div className="p-4 text-gray-500">Historial — próximamente</div>} />
+          <Route path="historial" element={<Historial />} />
           <Route path="reportes" element={<div className="p-4 text-gray-500">Reportes — próximamente</div>} />
           <Route path="configuracion" element={<Configuracion />} />
           <Route path="usuarios" element={<Usuarios />} />

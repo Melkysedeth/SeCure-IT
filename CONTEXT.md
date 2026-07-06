@@ -58,59 +58,6 @@ Tipografía: Inter → Segoe UI → Frutiger → Arial
 Sidebar: fondo #519d99, texto blanco
 Fondo: #f5f5f5 / Cards: blanco con border border-gray-100 shadow-sm rounded-xl
 
-## 🗄️ Modelo de Base de Datos
-
-### Tabla: `activos`
-
-```sql
-CREATE TABLE activos (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  codigo          VARCHAR(20) UNIQUE NOT NULL,   -- P155, P098...
-  nombre          VARCHAR(100) NOT NULL,          -- HP EliteBook 840
-  tipo            VARCHAR(20) NOT NULL,           -- laptop | tablet | celular | desktop
-  sistema_op      VARCHAR(50),                    -- Windows 11 Pro / Android 13
-  serial          VARCHAR(100) UNIQUE,
-  propietario     VARCHAR(100),                   -- usuario asignado formalmente
-  ciudad_asignada VARCHAR(100),                   -- ciudad base del equipo
-  fecha_registro  TIMESTAMP DEFAULT NOW(),
-  activo          BOOLEAN DEFAULT TRUE
-);
-```
-
-### Tabla: `reportes` (solo el último por equipo)
-
-```sql
-CREATE TABLE reportes (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  activo_id         UUID REFERENCES activos(id) ON DELETE CASCADE,
-  usuario_activo    VARCHAR(100),                 -- usuario Windows/Android activo
-  ip_local          VARCHAR(45),
-  ip_publica        VARCHAR(45),
-  red_wifi          VARCHAR(100),                 -- SSID de la red
-  ubicacion_ciudad  VARCHAR(100),                 -- ciudad detectada
-  latitud           DECIMAL(10, 8),
-  longitud          DECIMAL(11, 8),
-  bateria           INTEGER,                      -- porcentaje 0-100
-  estado            VARCHAR(20),                  -- en_linea | sin_conexion | fuera_sede
-  version_agente    VARCHAR(20),
-  timestamp_reporte TIMESTAMP DEFAULT NOW(),
-  UNIQUE(activo_id)                               -- un solo reporte por equipo (upsert)
-);
-```
-
-### Vista: `activos_con_reporte` (para el dashboard)
-
-```sql
-CREATE VIEW activos_con_reporte AS
-  SELECT a.*, r.usuario_activo, r.ip_local, r.ip_publica,
-         r.red_wifi, r.ubicacion_ciudad, r.latitud, r.longitud,
-         r.bateria, r.estado, r.version_agente, r.timestamp_reporte
-  FROM activos a
-  LEFT JOIN reportes r ON r.activo_id = a.id;
-```
-
----
-
 ## 📡 API — Endpoint del Agente
 
 ### POST `/api/agent/report`

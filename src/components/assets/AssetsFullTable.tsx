@@ -1,12 +1,17 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAssets } from "../../hooks/useAssets";
 import { Link } from "react-router-dom";
-import { Eye, Pencil, MoreHorizontal, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Pencil, MoreHorizontal, MapPin, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import type { AssetsFilters } from "./AssetsFilterBar";
+import { darDeBajaActivo } from "../../lib/assets";
+import ConfirmDialog from "../common/ConfirmDialog";
+import { useAlerts } from "../../hooks/useAlerts";
+import { mapAlerta } from "../../lib/alerts";
 
-type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
+export type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
 
-interface Activo {
+export interface Activo {
+  id: string;
   codigo: string;
   nombre: string;
   usuario: string;
@@ -31,8 +36,9 @@ function timeAgo(iso: string | null): string {
   return `Hace ${days} día${days > 1 ? "s" : ""}`;
 }
 
-function mapActivo(a: any): Activo {
+export function mapActivo(a: any): Activo {
   return {
+    id: a.id,
     codigo: a.codigo,
     nombre: a.nombre_equipo ?? "Sin nombre",
     usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
@@ -56,7 +62,7 @@ function getPageWindow(current: number, total: number): (number | "...")[] {
   return pages;
 }
 
-const estadoBadge: Record<Estado, { label: string; className: string }> = {
+export const estadoBadge: Record<Estado, { label: string; className: string }> = {
   en_linea: { label: "En línea", className: "bg-green-100 text-green-700" },
   sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600" },
   fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
@@ -98,29 +104,47 @@ function BateriaBar({ value }: { value: number | null }) {
   );
 }
 
+export function applyAssetsFilters(mapped: Activo[], filters: AssetsFilters): Activo[] {
+  const searchLower = filters.search.trim().toLowerCase();
+  return mapped.filter((a) => {
+    if (filters.estado !== "Todos" && a.estado !== filters.estado) return false;
+    if (filters.ubicacion !== "Todas" && a.ubicacion !== filters.ubicacion) return false;
+    if (filters.usuario !== "Todos" && a.usuario !== filters.usuario) return false;
+    if (filters.departamento !== "Todos" && a.cargo !== filters.departamento) return false;
+    if (searchLower) {
+      const haystack = `${a.codigo} ${a.nombre} ${a.usuario} ${a.numero_documento}`.toLowerCase();
+      if (!haystack.includes(searchLower)) return false;
+    }
+    return true;
+  });
+}
+
 const PAGE_SIZE_OPTIONS = [8, 20, 50];
 
 export default function AssetsFullTable({ filters }: { filters: AssetsFilters }) {
-  const { data, loading, error } = useAssets();
+  const { data, loading, error, refetch } = useAssets();
+
+  const { data: alertasRaw } = useAlerts();
+
+  const pendientesPorActivo = useMemo(() => {
+    const set = new Set<string>();
+    alertasRaw.forEach((raw) => {
+      const a = mapAlerta(raw);
+      if (a.estado === "PendienteConfirmacion" && a.activoId) set.add(a.activoId);
+    });
+    return set;
+  }, [alertasRaw]);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Activo | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const mapped = useMemo(() => data.map(mapActivo), [data]);
 
-  const filtered = useMemo(() => {
-    const searchLower = filters.search.trim().toLowerCase();
-    return mapped.filter((a) => {
-      if (filters.estado !== "Todos" && a.estado !== filters.estado) return false;
-      if (filters.ubicacion !== "Todas" && a.ubicacion !== filters.ubicacion) return false;
-      if (filters.usuario !== "Todos" && a.usuario !== filters.usuario) return false;
-      if (filters.departamento !== "Todos" && a.cargo !== filters.departamento) return false;
-      if (searchLower) {
-        const haystack = `${a.codigo} ${a.nombre} ${a.usuario} ${a.numero_documento}`.toLowerCase();
-        if (!haystack.includes(searchLower)) return false;
-      }
-      return true;
-    });
-  }, [mapped, filters]);
+  const filtered = useMemo(() => applyAssetsFilters(mapped, filters), [mapped, filters]);
 
   useEffect(() => {
     setPage(1);
@@ -129,6 +153,21 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
   const totalResults = filtered.length;
   const totalPages = Math.ceil(totalResults / pageSize) || 1;
   const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  async function handleConfirmDelete() {
+    if (!confirmTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await darDeBajaActivo(confirmTarget.id);
+      refetch();
+      setConfirmTarget(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "No se pudo dar de baja el activo.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (loading) {
     return <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-sm text-[#9898a0]">Cargando activos...</div>;
@@ -139,7 +178,6 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-      {/* Header de tabla con checkbox seleccionar todo */}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1000px] text-sm">
           <thead>
@@ -147,7 +185,7 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
               <th className="px-5 py-3 text-left w-10">
                 <input type="checkbox" className="rounded border-gray-300 accent-[#519d99]" />
               </th>
-              <th className="px-2 py-3 text-left">Código</th>
+              <th className="px-5 py-3 text-left">Código</th>
               <th className="px-5 py-3 text-left">Nombre</th>
               <th className="px-5 py-3 text-left">Usuario</th>
               <th className="px-5 py-3 text-left">Ubicación</th>
@@ -165,7 +203,7 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
                   <td className="px-5 py-3">
                     <input type="checkbox" className="rounded border-gray-300 accent-[#519d99]" />
                   </td>
-                  <td className="px-2 py-3 font-mono text-xs text-[#3d3d42] font-medium">{activo.codigo}</td>
+                  <td className="px-5 py-3 font-mono text-xs text-[#3d3d42] font-medium">{activo.codigo}</td>
                   <td className="px-5 py-3 text-[#3d3d42] font-medium whitespace-nowrap">{activo.nombre}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
@@ -188,23 +226,48 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
                     </div>
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.className}`}>{badge.label}</span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className={`px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.className}`}>{badge.label}</span>
+                      {pendientesPorActivo.has(activo.id) && (
+                        <span className="px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap bg-amber-100 text-amber-700">Pendiente por confirmar</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <BateriaBar value={activo.bateria} />
                   </td>
                   <td className="px-5 py-3 text-[#686971] text-xs whitespace-nowrap">{activo.ultima_conexion}</td>
                   <td className="px-5 py-3">
-                    <div className="flex items-center gap-2 text-[#9898a0]">
+                    <div className="relative flex items-center gap-2 text-[#9898a0]">
                       <Link to={`/activos/${activo.codigo}`} className="hover:text-[#519d99] transition-colors">
                         <Eye size={15} />
                       </Link>
                       <button className="hover:text-[#519d99] transition-colors">
                         <Pencil size={15} />
                       </button>
-                      <button className="hover:text-[#519d99] transition-colors">
+                      <button onClick={() => setMenuOpenId(menuOpenId === activo.id ? null : activo.id)} className="hover:text-[#519d99] transition-colors">
                         <MoreHorizontal size={15} />
                       </button>
+
+                      {menuOpenId === activo.id && (
+                        <>
+                          {/* Overlay invisible para cerrar el menú al hacer clic afuera */}
+                          <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
+                          <div className="absolute right-0 top-6 z-20 w-40 bg-white border border-gray-100 rounded-lg shadow-lg py-1">
+                            <button
+                              onClick={() => {
+                                setMenuOpenId(null);
+                                setConfirmTarget(activo);
+                                setDeleteError(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                              Dar de baja
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -215,9 +278,9 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
       </div>
 
       {/* Paginación */}
-      <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 flex-wrap gap-3">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 flex-wrap gap-3">
         <p className="text-xs text-[#9898a0]">
-          Mostrando {(page - 1) * pageSize + 1} a {Math.min(page * pageSize, totalResults)} de {totalResults} resultados
+          Mostrando {totalResults === 0 ? 0 : (page - 1) * pageSize + 1} a {Math.min(page * pageSize, totalResults)} de {totalResults} resultados
         </p>
 
         <div className="flex items-center gap-1.5">
@@ -273,6 +336,22 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
           </select>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Dar de baja activo"
+        message={
+          confirmTarget ? `Esta acción eliminará permanentemente "${confirmTarget.nombre}" (${confirmTarget.codigo}), junto con todos sus reportes y alertas asociadas. No se puede deshacer.` : ""
+        }
+        confirmLabel="Dar de baja"
+        loading={deleting}
+        error={deleteError}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setConfirmTarget(null);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }

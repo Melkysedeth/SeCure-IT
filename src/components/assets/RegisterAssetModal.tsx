@@ -5,7 +5,7 @@ import type { NuevoActivoForm, TipoActivo, TipoDocumento, EstadoActivo } from ".
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: (data: NuevoActivoForm) => void;
+  onSave: (data: NuevoActivoForm) => Promise<void>;
 }
 
 const TIPOS: { value: TipoActivo; label: string }[] = [
@@ -22,6 +22,7 @@ const DOCUMENTOS: { value: TipoDocumento; label: string }[] = [
   { value: "NIT", label: "NIT" },
   { value: "PPT", label: "Permiso de Protección Temporal" },
 ];
+// "En línea" primero: un activo recién registrado se asume operativo desde ya.
 const ESTADOS: { value: EstadoActivo; label: string }[] = [
   { value: "en_linea", label: "En línea" },
   { value: "sin_conexion", label: "Sin conexión" },
@@ -43,12 +44,13 @@ const initialForm: NuevoActivoForm = {
   numero_documento: "",
   departamento: "",
   direccion: "",
+  ciudad_asignada: "",
   observaciones: "",
   procesador: "",
   memoria_ram: "",
   almacenamiento: "",
   direccion_mac: "",
-  estado_inicial: "sin_conexion",
+  estado_inicial: "en_linea",
 };
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -67,6 +69,8 @@ const inputClass =
 
 export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
   const [form, setForm] = useState<NuevoActivoForm>(initialForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -74,10 +78,18 @@ export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave(form);
-    setForm(initialForm);
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(form);
+      setForm(initialForm);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo registrar el activo. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -174,9 +186,13 @@ export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
               <Field label="Departamento / Área" required>
                 <input className={inputClass} placeholder="Ej: Dirección ejecutiva / Asuntos médicos" value={form.departamento} onChange={(e) => update("departamento", e.target.value)} required />
               </Field>
-              <Field label="Ubicación actual" required>
+              <Field label="Ciudad asignada" required>
+                <input className={inputClass} placeholder="Ej: Bogotá" value={form.ciudad_asignada} onChange={(e) => update("ciudad_asignada", e.target.value)} required />
+              </Field>
+              <Field label="Dirección" required>
                 <input className={inputClass} placeholder="Ej: Cra 58 # 75-158" value={form.direccion} onChange={(e) => update("direccion", e.target.value)} required />
               </Field>
+
               <Field label="Estado inicial" required>
                 <select className={inputClass} value={form.estado_inicial} onChange={(e) => update("estado_inicial", e.target.value as EstadoActivo)} required>
                   {ESTADOS.map((s) => (
@@ -221,13 +237,24 @@ export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
             </div>
           </div>
 
+          {error && <div className="px-4 py-2.5 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">{error}</div>}
+
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[#686971] border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-[#686971] border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
               Cancelar
             </button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-[#519d99] hover:bg-[#3d7a76] rounded-lg transition-colors">
-              Guardar activo
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-white bg-[#519d99] hover:bg-[#3d7a76] rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving ? "Guardando..." : "Guardar activo"}
             </button>
           </div>
         </form>

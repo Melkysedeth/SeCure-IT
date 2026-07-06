@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAssetDetail } from "../hooks/useAssetDetail";
+import { darDeBajaActivo } from "../lib/assets";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { ChevronRight, Laptop, MoreVertical, User, MapPin, Cpu, Network, Monitor, Calendar, Shield, Bell } from "lucide-react";
+import { ChevronRight, Laptop, MoreVertical, Trash2, User, MapPin, Cpu, Network, Monitor, Calendar, Shield, Bell } from "lucide-react";
 import { useAlerts } from "../hooks/useAlerts";
 
 type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
@@ -134,6 +136,25 @@ export default function DetalleActivo() {
   const activo = useMemo(() => (raw ? mapDetalle(raw) : null), [raw]);
   const { data: alertasActivo, loading: loadingAlertas } = useAlerts({ activoId: raw?.id });
 
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleConfirmDelete() {
+    if (!raw?.id) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await darDeBajaActivo(raw.id);
+      navigate("/activos");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "No se pudo dar de baja el activo.");
+      setDeleting(false);
+    }
+  }
+
   if (loading) {
     return <div className="p-10 text-center text-sm text-[#9898a0]">Cargando activo...</div>;
   }
@@ -180,11 +201,49 @@ export default function DetalleActivo() {
             </p>
           </div>
         </div>
-        <button className="border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors">
-          <MoreVertical size={16} />
-          Acciones
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <MoreVertical size={16} />
+            Acciones
+          </button>
+
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-11 z-20 w-44 bg-white border border-gray-100 rounded-lg shadow-lg py-1">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setConfirmOpen(true);
+                    setDeleteError(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 size={15} />
+                  Dar de baja activo
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Dar de baja activo"
+        message={`Esta acción eliminará permanentemente "${activo.nombre}" (${activo.codigo}), junto con todos sus reportes y alertas asociadas. No se puede deshacer.`}
+        confirmLabel="Dar de baja"
+        loading={deleting}
+        error={deleteError}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setDeleteError(null);
+        }}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
