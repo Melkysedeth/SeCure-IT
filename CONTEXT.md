@@ -2,8 +2,6 @@
 
 Archivo de contexto del proyecto — Cargar al inicio de cada sesión de trabajo.
 
-_Última actualización: 2026-07-06._
-
 ## 🎯 Objetivo del Proyecto
 
 Plataforma web centralizada para monitorear activos tecnológicos de la empresa (laptops Windows, tablets y celulares Android). Permite ver dónde está cada equipo, quién lo usa y su metadata básica. No es tiempo real — los equipos reportan cada 4-6 horas de forma silenciosa.
@@ -138,6 +136,21 @@ X-Agent-Token: [token secreto configurado en el agente]
 ## 🗄️ Base de Datos (Supabase / PostgreSQL)
 
 > Descripción funcional del esquema actual. No se incluye SQL — solo el propósito de cada tabla/vista y cómo se relacionan.
+**Política de retención DVR quincenal**
+
+- El sistema operará con una retención de datos tipo DVR de 15 días para la tabla `reportes`.
+- Se debe programar un job diario con `pg_cron` para purgar filas antiguas:
+  - `delete from reportes where timestamp_reporte < now() - interval '15 days';`
+- Esta política mantiene el historial útil para el administrador, limita el crecimiento de datos dentro del plan gratuito y congela el consumo de espacio de forma predecible.
+- El historial disponible en la UI quedará explícitamente acotado a los últimos 15 días; cualquier reporte más antiguo se descarta automáticamente.
+- Recomendación de índices:
+  - `idx_reportes_timestamp_reporte` sobre `reportes(timestamp_reporte)` para que la purga diaria sea eficiente.
+  - `idx_reportes_activo_id_timestamp_reporte_desc` sobre `reportes(activo_id, timestamp_reporte DESC)` para acelerar la selección del último reporte por activo en la vista `activos_con_reporte`.
+
+**Tablas:**
+
+- **`activos`** — Ficha maestra de cada equipo: código, categoría, tipo (laptop/tablet/celular/desktop), marca/modelo, specs (procesador, RAM, almacenamiento, serial, MAC), sistema operativo, responsable asignado (documento, nombre, departamento), ubicación asignada (dirección, ciudad), fecha de registro, bandera de activo y observaciones.
+- **`reportes`** — Historial de reportes periódicos enviados por cada agente (o sembrados manualmente al registrar un activo): usuario activo, IP local/pública, red WiFi, ciudad detectada, latitud/longitud, batería, estado (`en_linea` / `sin_conexion` / `fuera_sede`), versión del agente y timestamp. La tabla deja de ser un historial indefinido y se transforma en una ventana deslizante de 15 días, con limpieza automática diaria para controlar el consumo de espacio.
 
 **Tablas:**
 
@@ -147,12 +160,16 @@ X-Agent-Token: [token secreto configurado en el agente]
 
 **Vistas:**
 
+- **`activos_con_reporte`** — `activos` unido con su reporte más reciente (estado, ubicación, batería, timestamp). Es la fuente de datos del Dashboard, Activos, Mapa y Detalle de Activo. Esta vista no requiere cambios por la retención de 15 días: sigue tomando el último `reportes` disponible y expone los mismos campos que consume el frontend.
 - **`activos_con_reporte`** — `activos` unido con su reporte más reciente (estado, ubicación, batería, timestamp). Es la fuente de datos del Dashboard, Activos, Mapa y Detalle de Activo.
 - **`alertas_con_activo`** — `alertas` unida con los datos del activo relacionado (código, nombre del equipo, responsable, departamento) para evitar joins del lado del cliente.
 
 **Automatización a nivel de base de datos:**
 
 - **Trigger `generar_alerta_por_estado`** — Al insertarse un reporte con estado `sin_conexion` o `fuera_sede`, crea automáticamente una alerta activa para ese equipo. Cuando el equipo vuelve a reportar `en_linea`, el mismo trigger resuelve la alerta (`estado = 'resuelta'`). La resolución manual desde la UI no cierra la alerta de inmediato: la deja en `pendiente_confirmacion` hasta que el trigger confirme el reporte real del agente.
+- **Trigger `trg_calcular_estado_geofencing`** — El trigger actual de geofencing puede seguir funcionando sin cambios. Solo actúa antes de insertar un nuevo reporte y no depende de conservar reportes más allá de la ventana de retención. Si en un caso extremo el activo no ha reportado en más de 15 días, el fallback de estado en el trigger puede limitarse a `en_linea` cuando no existe un reporte previo disponible, pero esto no rompe la lógica ni la vista.
+- **Job de purga diaria** — Un `pg_cron` programado debe ejecutar la limpieza de `reportes` antiguos cada 24 horas. Con una retención de 15 días, `activos_con_reporte` seguirá mostrando el último reporte reciente y el frontend seguirá funcionando con la misma vista y lógica de estado.
+
 
 **Baja de activos:** Es un hard delete manual desde el cliente (`darDeBajaActivo`), que borra en orden `alertas` → `reportes` → `activos` por `activo_id`, sin depender de `ON DELETE CASCADE` a nivel de base de datos.
 
@@ -173,6 +190,25 @@ X-Agent-Token: [token secreto configurado en el agente]
 - [ ] Edge Function: endpoint del agente (`POST /api/agent/report`) — **pendiente**
 - [ ] Página Configuración — **pendiente**
 - [ ] Página Usuarios — **pendiente**
+
+
+### Fase 2 — Agente Windows (C# .NET 8) — **pendiente**
+
+- [ ] Worker Service que reporta cada 4-6h
+- [ ] Recopila: serial, usuario Windows, IP local/pública, WiFi, batería
+
+### Fase 3 — Agente Android (Kotlin) — **pendiente**
+
+- [ ] WorkManager background cada 4-6h
+- [ ] GPS + WiFi + batería
+
+### Fase 4 — Mejoras
+
+- [x] Alertas automáticas por cambio de estado
+- [x] Historial de reportes por equipo
+- [x] Exportación a Excel (Activos e Historial)
+- [ ] Job de retención DVR quincenal en `reportes` (pg_cron / purga 15 días)
+
 
 ### Fase 2 — Agente Windows (C# .NET 8) — **pendiente**
 
