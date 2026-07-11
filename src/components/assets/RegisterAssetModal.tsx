@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Laptop, X } from "lucide-react";
-import type { NuevoActivoForm, TipoActivo, TipoDocumento, EstadoActivo } from "../../types";
+import type { NuevoActivoForm, TipoActivo, TipoDocumento } from "../../types";
+import { useSedes } from "../../hooks/useSedes";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onSave: (data: NuevoActivoForm) => Promise<void>;
+  initialData?: NuevoActivoForm | null;
 }
 
 const TIPOS: { value: TipoActivo; label: string }[] = [
@@ -22,12 +24,6 @@ const DOCUMENTOS: { value: TipoDocumento; label: string }[] = [
   { value: "NIT", label: "NIT" },
   { value: "PPT", label: "Permiso de Protección Temporal" },
 ];
-// "En línea" primero: un activo recién registrado se asume operativo desde ya.
-const ESTADOS: { value: EstadoActivo; label: string }[] = [
-  { value: "en_linea", label: "En línea" },
-  { value: "sin_conexion", label: "Sin conexión" },
-  { value: "fuera_sede", label: "Fuera de sede" },
-];
 
 const initialForm: NuevoActivoForm = {
   codigo: "",
@@ -43,14 +39,12 @@ const initialForm: NuevoActivoForm = {
   tipo_documento: "",
   numero_documento: "",
   departamento: "",
-  direccion: "",
-  ciudad_asignada: "",
+  sede_id: "",
   observaciones: "",
   procesador: "",
   memoria_ram: "",
   almacenamiento: "",
   direccion_mac: "",
-  estado_inicial: "en_linea",
 };
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -67,10 +61,16 @@ function Field({ label, required, children }: { label: string; required?: boolea
 const inputClass =
   "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg text-[#3d3d42] placeholder:text-[#b0b0b8] focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]";
 
-export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
-  const [form, setForm] = useState<NuevoActivoForm>(initialForm);
+export default function RegisterAssetModal({ open, onClose, onSave, initialData }: Props) {
+  const [form, setForm] = useState<NuevoActivoForm>(initialData ?? initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: sedes } = useSedes();
+  const isEditing = initialData != null;
+
+  useEffect(() => {
+    if (open) setForm(initialData ?? initialForm);
+  }, [open, initialData]);
 
   if (!open) return null;
 
@@ -102,8 +102,10 @@ export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
               <Laptop className="text-[#519d99]" size={20} />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-[#3d3d42]">Registrar nuevo activo</h2>
-              <p className="text-xs text-[#9898a0]">Completa la información para registrar un nuevo activo en el sistema.</p>
+              <h2 className="text-base font-semibold text-[#3d3d42]">{isEditing ? "Editar activo" : "Registrar nuevo activo"}</h2>
+              <p className="text-xs text-[#9898a0]">
+                {isEditing ? "Actualiza la información del activo." : "Completa la información para registrar un nuevo activo en el sistema."}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="text-[#9898a0] hover:text-[#3d3d42]">
@@ -186,23 +188,22 @@ export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
               <Field label="Departamento / Área" required>
                 <input className={inputClass} placeholder="Ej: Dirección ejecutiva / Asuntos médicos" value={form.departamento} onChange={(e) => update("departamento", e.target.value)} required />
               </Field>
-              <Field label="Ciudad asignada" required>
-                <input className={inputClass} placeholder="Ej: Bogotá" value={form.ciudad_asignada} onChange={(e) => update("ciudad_asignada", e.target.value)} required />
-              </Field>
-              <Field label="Dirección" required>
-                <input className={inputClass} placeholder="Ej: Cra 58 # 75-158" value={form.direccion} onChange={(e) => update("direccion", e.target.value)} required />
-              </Field>
-
-              <Field label="Estado inicial" required>
-                <select className={inputClass} value={form.estado_inicial} onChange={(e) => update("estado_inicial", e.target.value as EstadoActivo)} required>
-                  {ESTADOS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
+              <Field label="Sede asignada" required>
+                <select className={inputClass} value={form.sede_id} onChange={(e) => update("sede_id", e.target.value)} required>
+                  <option value="">Seleccionar sede</option>
+                  {sedes.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre} — {s.ciudad}
                     </option>
                   ))}
                 </select>
               </Field>
             </div>
+            {sedes.length === 0 && (
+              <p className="text-xs text-amber-600">
+                Todavía no hay sedes registradas. Créalas primero desde Configuración para poder asignarlas a un activo.
+              </p>
+            )}
 
             <Field label="Observaciones">
               <textarea
@@ -254,7 +255,7 @@ export default function RegisterAssetModal({ open, onClose, onSave }: Props) {
               disabled={saving}
               className="px-4 py-2 text-sm font-medium text-white bg-[#519d99] hover:bg-[#3d7a76] rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {saving ? "Guardando..." : "Guardar activo"}
+              {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar activo"}
             </button>
           </div>
         </form>

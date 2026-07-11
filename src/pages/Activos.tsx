@@ -3,16 +3,55 @@ import { useSearchParams } from "react-router-dom";
 import { Monitor, Plus, Download } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAssets } from "../hooks/useAssets";
+import { useSedes } from "../hooks/useSedes";
 import KPICards from "../components/dashboard/KPICards";
 import AssetsFilterBar, { type AssetsFilters } from "../components/assets/AssetsFilterBar";
 import AssetsFullTable, { mapActivo, applyAssetsFilters, estadoBadge } from "../components/assets/AssetsFullTable";
 import RegisterAssetModal from "../components/assets/RegisterAssetModal";
 import { exportRowsToExcel } from "../lib/exportExcel";
+import { actualizarActivo } from "../lib/assets";
 import type { NuevoActivoForm } from "../types";
 
 export default function Activos() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const { data: activosRaw, refetch } = useAssets();
+  const { data: sedes } = useSedes();
+
+  const editTarget = editId ? activosRaw.find((a: any) => a.id === editId) ?? null : null;
+  const editFormData: NuevoActivoForm | null = editTarget
+    ? {
+        codigo: editTarget.codigo,
+        nombre_equipo: editTarget.nombre_equipo ?? "",
+        tipo: editTarget.tipo ?? "",
+        serial: editTarget.serial ?? "",
+        marca: editTarget.marca ?? "",
+        modelo: editTarget.modelo ?? "",
+        sistema_op: editTarget.sistema_op ?? "",
+        version_so: editTarget.version_so ?? "",
+        dominio: editTarget.dominio ?? "",
+        nombre_responsable: editTarget.nombre_responsable ?? "",
+        tipo_documento: editTarget.tipo_documento ?? "",
+        numero_documento: editTarget.numero_documento ?? "",
+        departamento: editTarget.departamento ?? "",
+        sede_id: editTarget.sede_id ?? "",
+        observaciones: editTarget.observaciones ?? "",
+        procesador: editTarget.procesador ?? "",
+        memoria_ram: editTarget.memoria_ram ?? "",
+        almacenamiento: editTarget.almacenamiento ?? "",
+        direccion_mac: editTarget.direccion_mac ?? "",
+      }
+    : null;
+
+  function handleEdit(id: string) {
+    setEditId(id);
+    setModalOpen(true);
+  }
+
+  function handleCloseModal() {
+    setModalOpen(false);
+    setEditId(null);
+  }
 
   // Si se llega desde el Dashboard (click en una KPI card), la URL trae
   // ?estado=en_linea|fuera_sede|sin_conexion|Todos. Lo usamos para
@@ -51,6 +90,13 @@ export default function Activos() {
   }
 
   async function handleSave(data: NuevoActivoForm) {
+    if (editId) {
+      await actualizarActivo(editId, data);
+      refetch();
+      handleCloseModal();
+      return;
+    }
+
     // Generamos el id en el cliente para no depender de un SELECT de vuelta
     // después del INSERT (eso requeriría permiso de SELECT vía RLS sobre la
     // fila recién creada, que es una condición distinta a la de INSERT).
@@ -76,8 +122,7 @@ export default function Activos() {
       numero_documento: data.numero_documento,
       nombre_responsable: data.nombre_responsable,
       departamento: data.departamento,
-      direccion: data.direccion,
-      ciudad_asignada: data.ciudad_asignada,
+      sede_id: data.sede_id,
       observaciones: data.observaciones || null,
     });
 
@@ -87,14 +132,17 @@ export default function Activos() {
 
     // 2) Sembrar el primer reporte para que el activo aparezca de inmediato
     //    con estado real en `activos_con_reporte`, en vez de quedar en blanco
-    //    hasta que el agente mande su primer reporte.
-    //    OJO: esto dispara el trigger `generar_alerta_por_estado` — si el
-    //    estado inicial es "sin_conexion" o "fuera_sede" se va a crear una
-    //    alerta activa de inmediato, igual que con cualquier reporte del agente.
+    //    hasta que el agente mande su primer reporte. Se usa la sede recién
+    //    asignada como punto de referencia (mismas coordenadas, estado
+    //    "en_linea") — no lleva bssid_conectado, así que el trigger de
+    //    geofencing no lo toca y respeta este estado inicial.
+    const sede = sedes.find((s) => s.id === data.sede_id);
     const { error: reporteError } = await supabase.from("reportes").insert({
       activo_id: activoId,
-      estado: data.estado_inicial,
-      ubicacion_ciudad: data.ciudad_asignada,
+      estado: "en_linea",
+      ubicacion_ciudad: sede?.ciudad ?? null,
+      latitud: sede?.latitud ?? null,
+      longitud: sede?.longitud ?? null,
     });
 
     if (reporteError) {
@@ -132,9 +180,9 @@ export default function Activos() {
 
       <KPICards estadoActivo={filters.estado} onCardClick={(estado) => setFilters((f) => ({ ...f, estado: estado as AssetsFilters["estado"] }))} />
       <AssetsFilterBar filters={filters} onChange={setFilters} />
-      <AssetsFullTable filters={filters} />
+      <AssetsFullTable filters={filters} onEdit={handleEdit} />
 
-      <RegisterAssetModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSave} />
+      <RegisterAssetModal open={modalOpen} onClose={handleCloseModal} onSave={handleSave} initialData={editFormData} />
     </div>
   );
 }

@@ -1,36 +1,39 @@
-SeCure-IT — Sistema de Gestión y Trazabilidad de Activos Tecnológicos
+# SeCure-IT — Sistema de Gestión y Trazabilidad de Activos Tecnológicos
 
 Archivo de contexto del proyecto — Cargar al inicio de cada sesión de trabajo.
 
-🎯 Objetivo del Proyecto
+_Última actualización: 2026-07-06._
+
+## 🎯 Objetivo del Proyecto
 
 Plataforma web centralizada para monitorear activos tecnológicos de la empresa (laptops Windows, tablets y celulares Android). Permite ver dónde está cada equipo, quién lo usa y su metadata básica. No es tiempo real — los equipos reportan cada 4-6 horas de forma silenciosa.
 
-📋 Alcance definido (IN SCOPE)
+## 📋 Alcance definido (IN SCOPE)
 
-✅ Dashboard web con listado de todos los activos
-✅ Ubicación aproximada por ciudad (vía IP + GPS en Android)
-✅ Metadata básica de cada equipo (usuario, IP, WiFi, batería, estado)
-✅ Búsqueda y filtros (por código, serial, usuario, ciudad, estado)
-✅ Mapa de Colombia con marcadores por ciudad
-✅ Panel lateral de detalle por equipo
-✅ Agente silencioso para Windows (.NET Worker Service)
-✅ Agente silencioso para Android (WorkManager, background cada 4-6h)
-✅ Autenticación email + contraseña (Supabase Auth)
-✅ Indicadores: Total activos / En línea / Fuera de sede / Sin conexión
+- ✅ Dashboard web con listado de todos los activos
+- ✅ Ubicación aproximada por ciudad (vía IP + GPS en Android)
+- ✅ Metadata básica de cada equipo (usuario, IP, WiFi, batería, estado)
+- ✅ Búsqueda y filtros (por código, serial, usuario, ciudad, estado)
+- ✅ Mapa de Colombia con marcadores por ciudad
+- ✅ Panel/página de detalle por equipo
+- ✅ Historial de reportes por equipo (con filtros por rango de fecha y exportación a Excel)
+- ✅ Alertas automáticas por cambio de estado (`sin_conexion` / `fuera_sede`), con resolución automática cuando el equipo vuelve a reportar `en_linea`
+- ✅ Autenticación email + contraseña (Supabase Auth)
+- ✅ Indicadores: Total activos / En línea / Fuera de sede / Sin conexión
+- 🔜 Agente silencioso para Windows (.NET Worker Service) — diseñado, no implementado aún
+- 🔜 Agente silencioso para Android (WorkManager, background cada 4-6h) — diseñado, no implementado aún
 
-🚫 Fuera de alcance (OUT OF SCOPE — por ahora)
+## 🚫 Fuera de alcance (OUT OF SCOPE — por ahora)
 
-❌ Tiempo real / WebSockets
-❌ Histórico completo de movimientos (solo se guarda el último reporte)
-❌ Alertas automáticas (Fase 3)
-❌ Soporte iOS / iPhone
-❌ Google OAuth (solo email + contraseña)
-❌ Integración con Odoo u otros ERP
-❌ Reportes exportables (Fase 3)
+- ❌ Tiempo real / WebSockets
+- ❌ Soporte iOS / iPhone
+- ❌ Google OAuth (solo email + contraseña)
+- ❌ Integración con Odoo u otros ERP
+- ❌ Página dedicada de "Reportes" (hoy la exportación a Excel vive dentro de Activos e Historial; ver Roadmap)
 
-🏗️ Arquitectura
+## 🏗️ Arquitectura
 
+```
 [Agente Windows - C# .NET Worker Service]
 ↓ HTTPS POST cada 4-6h
 [Agente Android - Kotlin + WorkManager]
@@ -42,23 +45,41 @@ Plataforma web centralizada para monitorear activos tecnológicos de la empresa 
 ↑
 [Dashboard Web - Vite + React + TypeScript]
 ↑ Desplegado en Netlify
+```
 
-🛠️ Stack Tecnológico
+> Nota: los agentes (Windows y Android) y el Edge Function del endpoint `/api/agent/report` son diseño aún **no implementado**. El dashboard web hoy consume la base de datos directamente vía `@supabase/supabase-js` (no hay Edge Functions creadas todavía).
 
-CapaTecnologíaFrontendVite + React + TypeScriptUITailwind CSS + shadcn/ui (radix-nova)MapasLeaflet + OpenStreetMap (gratis)Base de datosSupabase (PostgreSQL)AuthSupabase Auth (email + contraseña)Backend/APISupabase Edge FunctionsAgente WindowsC# .NET 8 Worker ServiceAgente AndroidKotlin + WorkManagerGeolocalizaciónip-api.com (por IP) + GPS AndroidDeployNetlify (conectado a GitHub)
+## 🛠️ Stack Tecnológico
+
+| Capa | Tecnología |
+|---|---|
+| Frontend | Vite + React 19 + TypeScript |
+| UI | Tailwind CSS v4 + shadcn/ui + radix-ui + lucide-react |
+| Mapas | Leaflet + react-leaflet + OpenStreetMap (gratis) |
+| Base de datos | Supabase (PostgreSQL) |
+| Auth | Supabase Auth (email + contraseña) |
+| Backend/API | Supabase Edge Functions (pendiente de crear) |
+| Exportación | xlsx (SheetJS) — exportación a Excel desde Activos e Historial |
+| Agente Windows | C# .NET 8 Worker Service (pendiente) |
+| Agente Android | Kotlin + WorkManager (pendiente) |
+| Geolocalización | ip-api.com (por IP) + GPS Android |
+| Deploy | Netlify (conectado a GitHub) |
 
 Costo total: $0/mes
 
-🎨 Diseño / UI
+## 🎨 Diseño / UI
 
-Color primario: #519d99
-Color primario oscuro: #3d7a76
-Texto general: #686971 / oscuro: #3d3d42 / claro: #9898a0
-Tipografía: Inter → Segoe UI → Frutiger → Arial
-Sidebar: fondo #519d99, texto blanco
-Fondo: #f5f5f5 / Cards: blanco con border border-gray-100 shadow-sm rounded-xl
+- Color primario: `#519d99` / oscuro: `#3d7a76`
+- Texto general: `#686971` / oscuro: `#3d3d42` / claro: `#9898a0`
+- Tipografía: Inter → Segoe UI → Frutiger → Arial
+- Sidebar: fondo `#519d99`, texto blanco, con navegación principal (Dashboard, Activos, Mapa, Alertas, Historial, Reportes) y navegación inferior (Configuración, Usuarios)
+- Fondo: `#f5f5f5` / Cards: blanco con `border border-gray-100 shadow-sm rounded-xl`
+- Indicadores de estado: 🟢 En línea / 🔴 Sin conexión / 🟡 Fuera de sede
+- Mapa de Colombia con Leaflet (marcadores agrupados por ciudad)
 
-## 📡 API — Endpoint del Agente
+---
+
+## 📡 API — Endpoint del Agente (diseño, pendiente de implementar)
 
 ### POST `/api/agent/report`
 
@@ -91,69 +112,122 @@ X-Agent-Token: [token secreto configurado en el agente]
 }
 ```
 
-**Comportamiento:** Hace UPSERT en tabla `reportes`. La ciudad se detecta en el backend con ip-api.com usando la IP pública.
+**Comportamiento:** Inserta un nuevo registro en la tabla `reportes` (se conserva el historial completo, ya no se sobrescribe el último reporte). La ciudad se detecta en el backend con ip-api.com usando la IP pública. Un trigger de base de datos (`generar_alerta_por_estado`) evalúa el `estado` del reporte y crea/resuelve alertas automáticamente.
 
 ---
 
 ## 🖥️ Pantallas del Dashboard
 
-1. **Dashboard principal** — KPIs + mapa Colombia + tabla activos recientes + actividad reciente
-2. **Activos** — Listado completo con búsqueda, filtros y paginación
-3. **Detalle de activo** — Panel con toda la info del equipo (panel lateral)
-4. **Mapa** — Mapa completo de Colombia con todos los activos marcados por ciudad
-5. **Alertas** (Fase 3)
-6. **Historial** (Fase 3)
-7. **Reportes** (Fase 3)
-8. **Configuración** — Gestión de activos, tokens de agentes
-9. **Usuarios** — Gestión de administradores
+### Construidas y conectadas a datos reales (Supabase)
+
+1. **Dashboard** (`/`) — KPIs, mapa de Colombia, tabla de activos recientes y actividad reciente
+2. **Activos** (`/activos`) — Listado completo con búsqueda, filtros, paginación, alta de activos (modal de registro) y baja permanente (hard delete en cascada), exportación a Excel
+3. **Detalle de activo** (`/activos/:codigo`) — Vista con toda la info del equipo
+4. **Mapa** (`/mapa`) — Mapa completo de Colombia con todos los activos marcados por ciudad y filtros
+5. **Alertas** (`/alertas`) — KPIs de alertas, filtros (estado, severidad, tipo, ciudad), panel de detalle con tabs (Detalles / Historial / Comentarios — estos dos últimos son placeholders de UI) y flujo de resolución manual/automática
+6. **Historial** (`/historial`) — Línea de reportes por activo, filtros por rango de fecha, exportación a Excel
+
+### Pendientes
+
+7. **Reportes** (`/reportes`) — Ruta placeholder ("próximamente"). Hoy la exportación vive embebida en Activos e Historial; falta decidir si esta pantalla es un reporte consolidado/programado o se elimina del menú
+8. **Configuración** (`/configuracion`) — Placeholder ("en construcción"). Debe incluir gestión de activos y tokens de agentes
+9. **Usuarios** (`/usuarios`) — Placeholder ("en construcción"). Debe incluir gestión de administradores
 
 ---
 
-## 🎨 Diseño / UI
+## 🗄️ Base de Datos (Supabase / PostgreSQL)
 
-- Referencia visual: imagen de mockup compartida (dashboard con sidebar verde oscuro)
-- Sidebar izquierdo con navegación
-- Color primario: verde (#2d6a4f o similar)
-- Cards con KPIs en la parte superior
-- Tabla de activos en la parte inferior
-- Panel lateral deslizable con detalle del equipo
-- Indicadores de estado: 🟢 En línea / 🔴 Sin conexión / 🟡 Fuera de sede
-- Mapa de Colombia con Leaflet (clusters por ciudad)
+> Descripción funcional del esquema actual. No se incluye SQL — solo el propósito de cada tabla/vista y cómo se relacionan.
+
+**Tablas:**
+
+- **`activos`** — Ficha maestra de cada equipo: código, categoría, tipo (laptop/tablet/celular/desktop), marca/modelo, specs (procesador, RAM, almacenamiento, serial, MAC), sistema operativo, responsable asignado (documento, nombre, departamento), ubicación asignada (dirección, ciudad), fecha de registro, bandera de activo y observaciones.
+- **`reportes`** — Historial completo de reportes periódicos enviados por cada agente (o sembrados manualmente al registrar un activo): usuario activo, IP local/pública, red WiFi, ciudad detectada, latitud/longitud, batería, estado (`en_linea` / `sin_conexion` / `fuera_sede`), versión del agente y timestamp. A diferencia de versiones anteriores del proyecto, **ya no se sobrescribe** el último reporte — se conserva cada evento para poder construir el Historial. (Nota de escala: el hook `useReportes` hoy trae los últimos 1000 registros al cliente; si la tabla crece mucho va a hacer falta paginar desde el servidor.)
+- **`alertas`** — Alertas generadas por cambios de estado de un activo: tipo, severidad, descripción, estado (`activa` / `pendiente_confirmacion` / `resuelta`), ciudad, `created_at` y `resolved_at`.
+
+**Vistas:**
+
+- **`activos_con_reporte`** — `activos` unido con su reporte más reciente (estado, ubicación, batería, timestamp). Es la fuente de datos del Dashboard, Activos, Mapa y Detalle de Activo.
+- **`alertas_con_activo`** — `alertas` unida con los datos del activo relacionado (código, nombre del equipo, responsable, departamento) para evitar joins del lado del cliente.
+
+**Automatización a nivel de base de datos:**
+
+- **Trigger `generar_alerta_por_estado`** — Al insertarse un reporte con estado `sin_conexion` o `fuera_sede`, crea automáticamente una alerta activa para ese equipo. Cuando el equipo vuelve a reportar `en_linea`, el mismo trigger resuelve la alerta (`estado = 'resuelta'`). La resolución manual desde la UI no cierra la alerta de inmediato: la deja en `pendiente_confirmacion` hasta que el trigger confirme el reporte real del agente.
+
+**Baja de activos:** Es un hard delete manual desde el cliente (`darDeBajaActivo`), que borra en orden `alertas` → `reportes` → `activos` por `activo_id`, sin depender de `ON DELETE CASCADE` a nivel de base de datos.
 
 ---
 
 ## 📅 Fases de Desarrollo
 
-### Fase 1 — Core (actual)
+### Fase 1 — Core Web ✅ (completada, salvo lo anotado)
 
-- [ ] Diseño y creación de base de datos en Supabase
-- [ ] Edge Function: endpoint del agente (`POST /api/agent/report`)
-- [ ] Dashboard web: layout, sidebar, KPIs
-- [ ] Dashboard web: tabla de activos + búsqueda + filtros
-- [ ] Dashboard web: mapa con Leaflet
-- [ ] Dashboard web: panel de detalle del equipo
-- [ ] Agente Windows: C# .NET Worker Service
-- [ ] Autenticación con Supabase Auth
+- [x] Diseño y creación de base de datos en Supabase (incluye tablas `activos`, `reportes`, `alertas` y vistas `activos_con_reporte`, `alertas_con_activo`)
+- [x] Dashboard web: layout, sidebar, KPIs
+- [x] Dashboard web: tabla de activos + búsqueda + filtros + alta/baja de activos
+- [x] Dashboard web: mapa con Leaflet
+- [x] Dashboard web: página y panel de detalle del equipo
+- [x] Autenticación con Supabase Auth (login + logout + rutas protegidas)
+- [x] Página de Alertas (generación automática vía trigger + resolución manual/automática)
+- [x] Página de Historial (con filtros y exportación a Excel)
+- [ ] Edge Function: endpoint del agente (`POST /api/agent/report`) — **pendiente**
+- [ ] Página Configuración — **pendiente**
+- [ ] Página Usuarios — **pendiente**
 
-### Fase 2 — Agente Android
+### Fase 2 — Agente Windows (C# .NET 8) — **pendiente**
 
-- [ ] App Android (Kotlin) con WorkManager
-- [ ] Background reporting silencioso cada 4-6h
-- [ ] Obtención de GPS, WiFi, batería, usuario
+- [ ] Worker Service que reporta cada 4-6h
+- [ ] Recopila: serial, usuario Windows, IP local/pública, WiFi, batería
 
-### Fase 3 — Mejoras
+### Fase 3 — Agente Android (Kotlin) — **pendiente**
 
-- [ ] Alertas por inactividad (+7 días sin reporte)
-- [ ] Historial de reportes por equipo
-- [ ] Exportación de reportes (CSV/PDF)
+- [ ] WorkManager background cada 4-6h
+- [ ] GPS + WiFi + batería
+
+### Fase 4 — Mejoras
+
+- [x] Alertas automáticas por cambio de estado
+- [x] Historial de reportes por equipo
+- [x] Exportación a Excel (Activos e Historial)
 - [ ] Notificaciones por correo
+
+---
+
+## 🧭 Roadmap / Por Planear (crítico, aún sin diseñar)
+
+Estos puntos son desafíos de producto/arquitectura que todavía **no** tienen una solución definida y deben resolverse antes o durante el desarrollo de los agentes:
+
+### 1. Lógica de Geofencing ("fuera de sede")
+
+Falta definir cómo se determina y verifica que un activo está fuera de la ubicación permitida:
+
+- ¿Cómo se define el perímetro/sede permitida por activo o por ciudad asignada (radio, dirección, polígono)?
+- ¿La verificación se hace en el agente (comparando su IP/GPS contra la sede) o en el backend al recibir el reporte?
+- ¿Qué pasa cuando un activo cambia de sede legítimamente (traslado, préstamo)? ¿Requiere una actualización manual de "ciudad/sede asignada" antes de viajar?
+- Cómo interactúa esto con el trigger `generar_alerta_por_estado` (hoy solo reacciona al campo `estado` del reporte, no calcula geofencing por sí mismo).
+
+### 2. Alerta de "Sin Conexión" (heartbeat / timeout)
+
+Falta definir la estrategia para detectar cuando un equipo está apagado o el agente dejó de enviar datos:
+
+- Hoy el KPI de "Sin conexión" se referencia como "> 7 días sin reporte" en el Dashboard, pero no hay un job/verificación periódica que recalcule este estado de forma proactiva — depende de que llegue un nuevo reporte para reflejarse.
+- Definir un mecanismo de heartbeat/timeout (job programado, Edge Function con cron, o vista calculada) que marque un activo como `sin_conexion` cuando pasa cierto umbral sin reportar, sin esperar a un nuevo reporte del agente.
+- Decidir el umbral real (¿7 días? ¿configurable por tipo de activo?) y si debe generar alerta automáticamente vía el mismo trigger o uno nuevo.
+
+### 3. Integración con Android
+
+Falta definir el comportamiento específico del agente Android, que **difiere del agente Windows**:
+
+- Los dispositivos Android **no deben marcar "fuera de sede"** — no aplica el concepto de geofencing para ellos.
+- En su lugar, deben registrar y mostrar **constantemente** su ubicación actual (GPS), a diferencia de Windows que reporta solo ubicación aproximada por IP.
+- Falta definir si esto implica un campo/bandera distinta en `activos` o `reportes` para diferenciar el comportamiento esperado por tipo de dispositivo, y cómo se refleja esa diferencia en el Mapa y en el cálculo de alertas.
 
 ---
 
 ## 🔐 Seguridad
 
-- Dashboard protegido con Supabase Auth (solo admins)
-- Agentes autenticados con token estático en headers (`X-Agent-Token`)
+- Dashboard protegido con Supabase Auth (solo admins) — implementado
+- Agentes autenticados con token estático en headers (`X-Agent-Token`) — diseño, pendiente de implementar junto con el Edge Function
 - HTTPS en todas las comunicaciones
 - Supabase RLS (Row Level Security) habilitado en tablas
 
@@ -161,6 +235,7 @@ X-Agent-Token: [token secreto configurado en el agente]
 
 ## 📁 Estructura del Repositorio (planeada)
 
+```
 SECURE-IT/
 │
 ├── 📁 web/ ← El dashboard (Vite + React)
@@ -219,43 +294,15 @@ SECURE-IT/
 │ └── index.ts ← Edge Function de la API
 │
 └── README.md
+```
 
-🔐 Supabase
+> Esta estructura es el diseño planeado del repositorio completo (incluyendo agentes, aún no desarrollados). El código actual del dashboard vive en la raíz del repo (no bajo `web/`) — ver el árbol real de `src/` para la ubicación exacta de cada archivo hoy.
 
-URL: https://rtyksatnoipoxcybxrgq.supabase.co
-Proyecto: SeCure-IT
-Auth: Email + contraseña habilitado
-Usuarios admin: crear en Supabase → Authentication → Users → Add user
+---
 
-📅 Estado de Fases
+## 🔐 Supabase
 
-Fase 1 — Core Web
-
-Setup proyecto (Vite + React + TS + Tailwind + shadcn)
-Layout completo (Sidebar + Header + routing)
-Dashboard (KPIs + mapa + actividad + alertas + tabla)
-Página Activos (filtros + tabla + modal registrar)
-Página Mapa (Leaflet + filtros + panel detalle)
-Página Detalle del Activo (3 cols + tabs Info/Historial)
-Autenticación Supabase Auth (login + logout)
-Base de datos v2 creada en Supabase
-PRÓXIMO: Conectar Supabase (reemplazar mockData por queries reales)
-Edge Function: endpoint del agente
-Página Configuración
-Página Usuarios
-
-Fase 2 — Agente Windows (C# .NET 8)
-
-Worker Service que reporta cada 4-6h
-Recopila: serial, usuario Windows, IP local/pública, WiFi, batería
-
-Fase 3 — Agente Android (Kotlin)
-
-WorkManager background
-GPS + WiFi + batería
-
-Fase 4 — Mejoras
-
-Alertas por inactividad
-Exportación CSV/PDF
-Notificaciones por correo
+- URL: `https://rtyksatnoipoxcybxrgq.supabase.co`
+- Proyecto: SeCure-IT
+- Auth: Email + contraseña habilitado
+- Usuarios admin: crear en Supabase → Authentication → Users → Add user

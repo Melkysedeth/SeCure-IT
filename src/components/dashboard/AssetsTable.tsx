@@ -76,7 +76,9 @@ export default function AssetsTable() {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Activos recientes</h2>
-        <button className="text-xs text-[#519d99] font-medium hover:underline">Ver todos los activos →</button>
+        <Link to="/activos" className="text-xs text-[#519d99] font-medium hover:underline">
+          Ver todos los activos →
+        </Link>
       </div>
 
       {/* Tabla */}

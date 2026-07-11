@@ -1,4 +1,5 @@
 import { Wifi, MapPin, WifiOff } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { useAssets } from "../../hooks/useAssets";
 import { useAlerts } from "../../hooks/useAlerts";
@@ -32,7 +33,9 @@ export function ActividadReciente() {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Últimos reportes</h2>
-        <button className="text-xs text-[#519d99] font-medium hover:underline">Ver todas</button>
+        <Link to="/historial" className="text-xs text-[#519d99] font-medium hover:underline">
+          Ver todas
+        </Link>
       </div>
       <div className="flex flex-col">
         {loading && <p className="px-5 py-4 text-xs text-[#9898a0]">Cargando...</p>}
@@ -67,7 +70,9 @@ export function AlertasRecientes() {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Alertas recientes</h2>
-        <button className="text-xs text-[#519d99] font-medium hover:underline">Ver todas</button>
+        <Link to="/alertas" className="text-xs text-[#519d99] font-medium hover:underline">
+          Ver todas
+        </Link>
       </div>
       <div className="flex flex-col">
         {loading && <p className="px-5 py-4 text-xs text-[#9898a0]">Cargando...</p>}

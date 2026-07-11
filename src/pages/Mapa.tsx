@@ -23,6 +23,7 @@ interface ActivoMapa {
 }
 
 interface CiudadGrupo {
+  key: string;
   nombre: string;
   lat: number;
   lng: number;
@@ -70,31 +71,35 @@ function mapActivo(a: any): ActivoMapa {
   };
 }
 
+// Agrupa por sede (no por texto de ciudad): cada sede tiene coordenadas fijas
+// en la tabla `sedes`, así que sus activos se apilan en un único punto exacto
+// en vez de promediar latitudes/longitudes de reportes individuales (eso
+// producía puntos "fantasma" cuando dos activos compartían ciudad pero tenían
+// coordenadas distintas o ruidosas).
 function agruparPorCiudad(data: any[]): CiudadGrupo[] {
-  const grupos = new Map<string, { sumaLat: number; sumaLng: number; count: number; activos: ActivoMapa[] }>();
+  const grupos = new Map<string, { nombre: string; lat: number; lng: number; activos: ActivoMapa[] }>();
 
   for (const raw of data) {
-    const nombre = raw.ubicacion_ciudad ?? raw.ciudad_asignada;
-    const lat = raw.latitud;
-    const lng = raw.longitud;
-    if (!nombre || lat == null || lng == null) continue;
+    const key = raw.sede_id ?? raw.ubicacion_ciudad ?? raw.ciudad_asignada;
+    const nombre = raw.sede_nombre ?? raw.ubicacion_ciudad ?? raw.ciudad_asignada;
+    const lat = raw.sede_latitud ?? raw.latitud;
+    const lng = raw.sede_longitud ?? raw.longitud;
+    if (!key || lat == null || lng == null) continue;
 
-    const existente = grupos.get(nombre);
+    const existente = grupos.get(key);
     const activoMapeado = mapActivo(raw);
     if (existente) {
-      existente.sumaLat += lat;
-      existente.sumaLng += lng;
-      existente.count += 1;
       existente.activos.push(activoMapeado);
     } else {
-      grupos.set(nombre, { sumaLat: lat, sumaLng: lng, count: 1, activos: [activoMapeado] });
+      grupos.set(key, { nombre, lat, lng, activos: [activoMapeado] });
     }
   }
 
-  return Array.from(grupos.entries()).map(([nombre, g]) => ({
-    nombre,
-    lat: g.sumaLat / g.count,
-    lng: g.sumaLng / g.count,
+  return Array.from(grupos.entries()).map(([key, g]) => ({
+    key,
+    nombre: g.nombre,
+    lat: g.lat,
+    lng: g.lng,
     activos: g.activos,
   }));
 }
@@ -277,7 +282,7 @@ export default function Mapa() {
             <RecenterButton />
             {ciudadesFiltradas.map((ciudad) => (
               <CircleMarker
-                key={ciudad.nombre}
+                key={ciudad.key}
                 center={[ciudad.lat, ciudad.lng]}
                 radius={getRadius(ciudad.activos.length)}
                 pathOptions={{

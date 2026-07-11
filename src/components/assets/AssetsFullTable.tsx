@@ -121,7 +121,7 @@ export function applyAssetsFilters(mapped: Activo[], filters: AssetsFilters): Ac
 
 const PAGE_SIZE_OPTIONS = [8, 20, 50];
 
-export default function AssetsFullTable({ filters }: { filters: AssetsFilters }) {
+export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFilters; onEdit: (id: string) => void }) {
   const { data, loading, error, refetch } = useAssets();
 
   const { data: alertasRaw } = useAlerts();
@@ -242,7 +242,7 @@ export default function AssetsFullTable({ filters }: { filters: AssetsFilters })
                       <Link to={`/activos/${activo.codigo}`} className="hover:text-[#519d99] transition-colors">
                         <Eye size={15} />
                       </Link>
-                      <button className="hover:text-[#519d99] transition-colors">
+                      <button onClick={() => onEdit(activo.id)} className="hover:text-[#519d99] transition-colors">
                         <Pencil size={15} />
                       </button>
                       <button onClick={() => setMenuOpenId(menuOpenId === activo.id ? null : activo.id)} className="hover:text-[#519d99] transition-colors">

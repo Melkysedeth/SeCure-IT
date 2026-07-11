@@ -4,6 +4,23 @@ export type EstadoActivo = "en_linea" | "sin_conexion" | "fuera_sede";
 
 export type TipoDocumento = "CC" | "NIT" | "PPT" | "CE";
 
+export interface Sede {
+  id: string;
+  nombre: string;
+  ciudad: string;
+  direccion: string | null;
+  latitud: number;
+  longitud: number;
+  activo: boolean;
+}
+
+export interface SedeBssid {
+  id: string;
+  sede_id: string;
+  bssid: string;
+  descripcion: string | null;
+}
+
 export interface Activo {
   id: string;
   codigo: string;
@@ -28,8 +45,7 @@ export interface Activo {
   nombre_responsable: string | null;
   departamento: string | null;
 
-  direccion: string | null;
-  ciudad_asignada: string | null;
+  sede_id: string | null;
 
   fecha_registro: string;
   activo: boolean;
@@ -43,6 +59,7 @@ export interface Reporte {
   ip_local: string;
   ip_publica: string;
   red_wifi: string;
+  bssid_conectado: string | null;
   ubicacion_ciudad: string;
   latitud: number | null;
   longitud: number | null;
@@ -69,12 +86,10 @@ export interface NuevoActivoForm {
   tipo_documento: TipoDocumento | "";
   numero_documento: string;
   departamento: string;
-  direccion: string;
+  sede_id: string;
   observaciones: string;
   procesador: string;
   memoria_ram: string;
   almacenamiento: string;
   direccion_mac: string;
-  estado_inicial: EstadoActivo;
-  ciudad_asignada: string;
 }

@@ -27,7 +27,7 @@ function buildCards(data: ReturnType<typeof useAssets>["data"], alertasActivas: 
     { label: "Total Activos", sublabel: "Todos los equipos", value: total, icon: Monitor, iconBg: "bg-[#519d99]/10", iconColor: "text-[#519d99]", filterValue: "Todos" },
     { label: "En línea", sublabel: `${pct}% del total`, value: enLinea, icon: Wifi, iconBg: "bg-green-100", iconColor: "text-green-600", filterValue: "en_linea" },
     { label: "Fuera de sede", sublabel: "Requieren atención", value: fueraDeSede, icon: MapPin, iconBg: "bg-orange-100", iconColor: "text-orange-500", filterValue: "fuera_sede" },
-    { label: "Sin conexión", sublabel: "> 7 días sin reporte", value: sinConexion, icon: WifiOff, iconBg: "bg-red-100", iconColor: "text-red-500", filterValue: "sin_conexion" },
+    { label: "Sin conexión", sublabel: "> 24 horas sin reporte", value: sinConexion, icon: WifiOff, iconBg: "bg-red-100", iconColor: "text-red-500", filterValue: "sin_conexion" },
     {
       label: "Alertas activas",
       sublabel: alertasActivas > 0 ? "Requieren atención" : "Todo en orden",
