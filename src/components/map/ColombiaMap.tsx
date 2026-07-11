@@ -4,37 +4,37 @@ import { useMemo } from "react";
 import { useAssets } from "../../hooks/useAssets";
 
 interface CiudadData {
+  key: string;
   nombre: string;
   lat: number;
   lng: number;
   cantidad: number;
 }
 
+// Agrupa por sede (no por texto de ciudad): cada sede tiene coordenadas fijas
+// en la tabla `sedes`, así que todos sus activos se apilan en un único punto
+// exacto en vez de promediar latitudes/longitudes de reportes individuales
+// (eso producía puntos "fantasma" cuando dos activos compartían ciudad pero
+// tenían coordenadas distintas o ruidosas).
 function agruparPorCiudad(data: any[]): CiudadData[] {
-  const grupos = new Map<string, { lat: number; lng: number; cantidad: number; sumaLat: number; sumaLng: number }>();
+  const grupos = new Map<string, CiudadData>();
 
   for (const activo of data) {
-    const nombre = activo.ubicacion_ciudad ?? activo.ciudad_asignada;
-    const lat = activo.latitud;
-    const lng = activo.longitud;
-    if (!nombre || lat == null || lng == null) continue;
+    const key = activo.sede_id ?? activo.ubicacion_ciudad ?? activo.ciudad_asignada;
+    const nombre = activo.sede_nombre ?? activo.ubicacion_ciudad ?? activo.ciudad_asignada;
+    const lat = activo.sede_latitud ?? activo.latitud;
+    const lng = activo.sede_longitud ?? activo.longitud;
+    if (!key || lat == null || lng == null) continue;
 
-    const existente = grupos.get(nombre);
+    const existente = grupos.get(key);
     if (existente) {
       existente.cantidad += 1;
-      existente.sumaLat += lat;
-      existente.sumaLng += lng;
     } else {
-      grupos.set(nombre, { lat, lng, cantidad: 1, sumaLat: lat, sumaLng: lng });
+      grupos.set(key, { key, nombre, lat, lng, cantidad: 1 });
     }
   }
 
-  return Array.from(grupos.entries()).map(([nombre, g]) => ({
-    nombre,
-    lat: g.sumaLat / g.cantidad,
-    lng: g.sumaLng / g.cantidad,
-    cantidad: g.cantidad,
-  }));
+  return Array.from(grupos.values());
 }
 
 function getRadius(cantidad: number) {
@@ -67,7 +67,7 @@ export default function ColombiaMap() {
           <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {ciudadesData.map((ciudad) => (
             <CircleMarker
-              key={ciudad.nombre}
+              key={ciudad.key}
               center={[ciudad.lat, ciudad.lng]}
               radius={getRadius(ciudad.cantidad)}
               pathOptions={{

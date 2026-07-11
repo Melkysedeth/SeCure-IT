@@ -2,8 +2,6 @@
 
 Archivo de contexto del proyecto — Cargar al inicio de cada sesión de trabajo.
 
-_Última actualización: 2026-07-11._
-
 ## 🎯 Objetivo del Proyecto
 
 Plataforma web centralizada para monitorear activos tecnológicos de la empresa (laptops Windows, tablets y celulares Android). Permite ver dónde está cada equipo, quién lo usa y su metadata básica. No es tiempo real — los equipos reportan cada 4-6 horas de forma silenciosa.
@@ -138,7 +136,6 @@ X-Agent-Token: [token secreto configurado en el agente]
 ## 🗄️ Base de Datos (Supabase / PostgreSQL)
 
 > Descripción funcional del esquema actual. No se incluye SQL — solo el propósito de cada tabla/vista y cómo se relacionan.
-
 **Política de retención DVR quincenal**
 
 - El sistema operará con una retención de datos tipo DVR de 15 días para la tabla `reportes`.
@@ -154,11 +151,17 @@ X-Agent-Token: [token secreto configurado en el agente]
 
 - **`activos`** — Ficha maestra de cada equipo: código, categoría, tipo (laptop/tablet/celular/desktop), marca/modelo, specs (procesador, RAM, almacenamiento, serial, MAC), sistema operativo, responsable asignado (documento, nombre, departamento), ubicación asignada (dirección, ciudad), fecha de registro, bandera de activo y observaciones.
 - **`reportes`** — Historial de reportes periódicos enviados por cada agente (o sembrados manualmente al registrar un activo): usuario activo, IP local/pública, red WiFi, ciudad detectada, latitud/longitud, batería, estado (`en_linea` / `sin_conexion` / `fuera_sede`), versión del agente y timestamp. La tabla deja de ser un historial indefinido y se transforma en una ventana deslizante de 15 días, con limpieza automática diaria para controlar el consumo de espacio.
+
+**Tablas:**
+
+- **`activos`** — Ficha maestra de cada equipo: código, categoría, tipo (laptop/tablet/celular/desktop), marca/modelo, specs (procesador, RAM, almacenamiento, serial, MAC), sistema operativo, responsable asignado (documento, nombre, departamento), ubicación asignada (dirección, ciudad), fecha de registro, bandera de activo y observaciones.
+- **`reportes`** — Historial completo de reportes periódicos enviados por cada agente (o sembrados manualmente al registrar un activo): usuario activo, IP local/pública, red WiFi, ciudad detectada, latitud/longitud, batería, estado (`en_linea` / `sin_conexion` / `fuera_sede`), versión del agente y timestamp. A diferencia de versiones anteriores del proyecto, **ya no se sobrescribe** el último reporte — se conserva cada evento para poder construir el Historial. (Nota de escala: el hook `useReportes` hoy trae los últimos 1000 registros al cliente; si la tabla crece mucho va a hacer falta paginar desde el servidor.)
 - **`alertas`** — Alertas generadas por cambios de estado de un activo: tipo, severidad, descripción, estado (`activa` / `pendiente_confirmacion` / `resuelta`), ciudad, `created_at` y `resolved_at`.
 
 **Vistas:**
 
 - **`activos_con_reporte`** — `activos` unido con su reporte más reciente (estado, ubicación, batería, timestamp). Es la fuente de datos del Dashboard, Activos, Mapa y Detalle de Activo. Esta vista no requiere cambios por la retención de 15 días: sigue tomando el último `reportes` disponible y expone los mismos campos que consume el frontend.
+- **`activos_con_reporte`** — `activos` unido con su reporte más reciente (estado, ubicación, batería, timestamp). Es la fuente de datos del Dashboard, Activos, Mapa y Detalle de Activo.
 - **`alertas_con_activo`** — `alertas` unida con los datos del activo relacionado (código, nombre del equipo, responsable, departamento) para evitar joins del lado del cliente.
 
 **Automatización a nivel de base de datos:**
@@ -166,6 +169,7 @@ X-Agent-Token: [token secreto configurado en el agente]
 - **Trigger `generar_alerta_por_estado`** — Al insertarse un reporte con estado `sin_conexion` o `fuera_sede`, crea automáticamente una alerta activa para ese equipo. Cuando el equipo vuelve a reportar `en_linea`, el mismo trigger resuelve la alerta (`estado = 'resuelta'`). La resolución manual desde la UI no cierra la alerta de inmediato: la deja en `pendiente_confirmacion` hasta que el trigger confirme el reporte real del agente.
 - **Trigger `trg_calcular_estado_geofencing`** — El trigger actual de geofencing puede seguir funcionando sin cambios. Solo actúa antes de insertar un nuevo reporte y no depende de conservar reportes más allá de la ventana de retención. Si en un caso extremo el activo no ha reportado en más de 15 días, el fallback de estado en el trigger puede limitarse a `en_linea` cuando no existe un reporte previo disponible, pero esto no rompe la lógica ni la vista.
 - **Job de purga diaria** — Un `pg_cron` programado debe ejecutar la limpieza de `reportes` antiguos cada 24 horas. Con una retención de 15 días, `activos_con_reporte` seguirá mostrando el último reporte reciente y el frontend seguirá funcionando con la misma vista y lógica de estado.
+
 
 **Baja de activos:** Es un hard delete manual desde el cliente (`darDeBajaActivo`), que borra en orden `alertas` → `reportes` → `activos` por `activo_id`, sin depender de `ON DELETE CASCADE` a nivel de base de datos.
 
@@ -187,6 +191,7 @@ X-Agent-Token: [token secreto configurado en el agente]
 - [ ] Página Configuración — **pendiente**
 - [ ] Página Usuarios — **pendiente**
 
+
 ### Fase 2 — Agente Windows (C# .NET 8) — **pendiente**
 
 - [ ] Worker Service que reporta cada 4-6h
@@ -203,6 +208,23 @@ X-Agent-Token: [token secreto configurado en el agente]
 - [x] Historial de reportes por equipo
 - [x] Exportación a Excel (Activos e Historial)
 - [ ] Job de retención DVR quincenal en `reportes` (pg_cron / purga 15 días)
+
+
+### Fase 2 — Agente Windows (C# .NET 8) — **pendiente**
+
+- [ ] Worker Service que reporta cada 4-6h
+- [ ] Recopila: serial, usuario Windows, IP local/pública, WiFi, batería
+
+### Fase 3 — Agente Android (Kotlin) — **pendiente**
+
+- [ ] WorkManager background cada 4-6h
+- [ ] GPS + WiFi + batería
+
+### Fase 4 — Mejoras
+
+- [x] Alertas automáticas por cambio de estado
+- [x] Historial de reportes por equipo
+- [x] Exportación a Excel (Activos e Historial)
 - [ ] Notificaciones por correo
 
 ---
