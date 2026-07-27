@@ -1,8 +1,7 @@
 import { Bell, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
-import { useAlerts } from "../../hooks/useAlerts";
-import { mapAlerta } from "../../lib/alerts";
+import { useAlertsKPIs, type AlertsKPIData } from "../../hooks/useAlertsKPIs";
 
 interface KPICard {
   label: string;
@@ -15,14 +14,7 @@ interface KPICard {
   filterValue: string;
 }
 
-function buildCards(raw: ReturnType<typeof useAlerts>["data"]): KPICard[] {
-  const data = raw.map(mapAlerta);
-  const total = data.length;
-  const activas = data.filter((a) => a.estado === "Activa").length;
-  const criticas = data.filter((a) => a.severidad === "critica").length;
-  const altas = data.filter((a) => a.severidad === "alta").length;
-  const resueltas = data.filter((a) => a.estado === "Resuelta").length;
-
+function buildCards({ total, activas, criticas, altas, resueltas }: AlertsKPIData): KPICard[] {
   return [
     { label: "Total alertas", sublabel: "Todas las alertas", value: total, icon: Bell, iconBg: "bg-[#519d99]/10", iconColor: "text-[#519d99]", filterKey: "estado", filterValue: "Todos" },
     { label: "Activas", sublabel: "Pendientes por atender", value: activas, icon: AlertCircle, iconBg: "bg-red-100", iconColor: "text-red-500", filterKey: "estado", filterValue: "Activa" },
@@ -48,7 +40,7 @@ export default function AlertsKPICards({
   filters?: { estado: string; severidad: string };
   onCardClick?: (filterKey: "estado" | "severidad", value: string) => void;
 } = {}) {
-  const { data, loading } = useAlerts();
+  const { data, loading } = useAlertsKPIs();
   const cards = useMemo(() => buildCards(data), [data]);
   const navigate = useNavigate();
 
@@ -78,9 +70,8 @@ export default function AlertsKPICards({
           <div
             key={label}
             onClick={() => handleClick(filterKey, filterValue)}
-            className={`bg-white rounded-xl p-4 flex items-center gap-4 shadow-sm border cursor-pointer transition-colors hover:border-[#519d99]/40 ${
-              isActive ? "border-[#519d99] ring-1 ring-[#519d99]/30" : "border-gray-100"
-            }`}
+            className={`bg-white rounded-xl p-4 flex items-center gap-4 shadow-sm border cursor-pointer transition-colors hover:border-[#519d99]/40 ${isActive ? "border-[#519d99] ring-1 ring-[#519d99]/30" : "border-gray-100"
+              }`}
           >
             <div className={`${iconBg} p-3 rounded-lg`}>
               <Icon size={20} className={iconColor} />

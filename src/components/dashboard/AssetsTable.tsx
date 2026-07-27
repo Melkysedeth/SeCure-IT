@@ -8,6 +8,7 @@ type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
 interface Activo {
   codigo: string;
   nombre: string;
+  usuario_reporta: string;
   usuario: string;
   ubicacion: string;
   estado: Estado;
@@ -21,27 +22,28 @@ const estadoBadge: Record<Estado, { label: string; className: string }> = {
   fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
 };
 
-function timeAgo(iso: string | null): string {
+function formatDateTime(iso: string | null): string {
   if (!iso) return "Sin datos";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "Hace instantes";
-  if (mins < 60) return `Hace ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Hace ${hours} horas`;
-  const days = Math.floor(hours / 24);
-  return `Hace ${days} día${days > 1 ? "s" : ""}`;
+  const isoConZ = iso.includes("Z") || iso.includes("+") ? iso : iso.replace(" ", "T") + "Z";
+  return new Date(isoConZ).toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
 }
 
 function mapActivo(a: any): Activo {
   return {
     codigo: a.codigo,
     nombre: a.nombre_equipo ?? "Sin nombre",
+    usuario_reporta: a.usuario_activo ?? "Sin datos",
     usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
     ubicacion: a.ubicacion_ciudad ?? a.ciudad_asignada ?? "—",
     estado: (a.estado as Estado) ?? "sin_conexion",
     bateria: a.bateria ?? 0,
-    ultima_conexion: timeAgo(a.timestamp_reporte),
+    ultima_conexion: formatDateTime(a.timestamp_reporte),
   };
 }
 
@@ -102,7 +104,10 @@ export default function AssetsTable() {
               return (
                 <tr key={activo.codigo} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3 font-mono text-xs text-[#3d3d42] font-medium">{activo.codigo}</td>
-                  <td className="px-5 py-3 text-[#3d3d42] font-medium">{activo.nombre}</td>
+                  <td className="px-5 py-3">
+                    <p className="text-[#3d3d42] font-medium">{activo.nombre}</p>
+                    <p className="text-[11px] text-[#9898a0]">{activo.usuario_reporta}</p>
+                  </td>
                   <td className="px-5 py-3 text-[#686971]">{activo.usuario}</td>
                   <td className="px-5 py-3 text-[#686971]">{activo.ubicacion}</td>
                   <td className="px-5 py-3">

@@ -54,3 +54,38 @@ export async function darDeBajaActivo(activoId: string): Promise<void> {
     throw new Error(`No se pudo eliminar el activo: ${activoError.message}`);
   }
 }
+
+export async function asignarTrasladoTemporal(
+  activoId: string,
+  sedeTemporalId: string,
+  sedeTemporalHasta: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("activos")
+    .update({
+      sede_temporal_id: sedeTemporalId,
+      sede_temporal_hasta: sedeTemporalHasta,
+    })
+    .eq("id", activoId)
+    .select();
+
+  console.log("Filas actualizadas:", data);
+
+  if (error) {
+    throw new Error(`No se pudo autorizar el traslado temporal: ${error.message}`);
+  }
+  if (!data || data.length === 0) {
+    throw new Error("El traslado no se guardó — probablemente bloqueado por una política de seguridad (RLS).");
+  }
+}
+
+export async function cancelarTrasladoTemporal(activoId: string): Promise<void> {
+  const { error } = await supabase
+    .from("activos")
+    .update({ sede_temporal_id: null, sede_temporal_hasta: null })
+    .eq("id", activoId);
+
+  if (error) {
+    throw new Error(`No se pudo cancelar el traslado temporal: ${error.message}`);
+  }
+}

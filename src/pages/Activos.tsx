@@ -19,28 +19,29 @@ export default function Activos() {
   const { data: sedes } = useSedes();
 
   const editTarget = editId ? activosRaw.find((a: any) => a.id === editId) ?? null : null;
+
   const editFormData: NuevoActivoForm | null = editTarget
     ? {
-        codigo: editTarget.codigo,
-        nombre_equipo: editTarget.nombre_equipo ?? "",
-        tipo: editTarget.tipo ?? "",
-        serial: editTarget.serial ?? "",
-        marca: editTarget.marca ?? "",
-        modelo: editTarget.modelo ?? "",
-        sistema_op: editTarget.sistema_op ?? "",
-        version_so: editTarget.version_so ?? "",
-        dominio: editTarget.dominio ?? "",
-        nombre_responsable: editTarget.nombre_responsable ?? "",
-        tipo_documento: editTarget.tipo_documento ?? "",
-        numero_documento: editTarget.numero_documento ?? "",
-        departamento: editTarget.departamento ?? "",
-        sede_id: editTarget.sede_id ?? "",
-        observaciones: editTarget.observaciones ?? "",
-        procesador: editTarget.procesador ?? "",
-        memoria_ram: editTarget.memoria_ram ?? "",
-        almacenamiento: editTarget.almacenamiento ?? "",
-        direccion_mac: editTarget.direccion_mac ?? "",
-      }
+      codigo: editTarget.codigo,
+      nombre_equipo: editTarget.nombre_equipo ?? "",
+      tipo: editTarget.tipo ?? "",
+      serial: editTarget.serial ?? "",
+      marca: editTarget.marca ?? "",
+      modelo: editTarget.modelo ?? "",
+      sistema_op: editTarget.sistema_op ?? "",
+      version_so: editTarget.version_so ?? "",
+      dominio: editTarget.dominio ?? "",
+      nombre_responsable: editTarget.nombre_responsable ?? "",
+      tipo_documento: editTarget.tipo_documento ?? "",
+      numero_documento: editTarget.numero_documento ?? "",
+      departamento: editTarget.departamento ?? "",
+      sede_id: editTarget.sede_id ?? "",
+      observaciones: editTarget.observaciones ?? "",
+      procesador: editTarget.procesador ?? "",
+      memoria_ram: editTarget.memoria_ram ?? "",
+      almacenamiento: editTarget.almacenamiento ?? "",
+      direccion_mac: editTarget.direccion_mac ?? "",
+    }
     : null;
 
   function handleEdit(id: string) {

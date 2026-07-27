@@ -8,9 +8,9 @@ import AlertDetailPanel from "./AlertDetailPanel";
 const PAGE_SIZE_OPTIONS = [8, 20, 50];
 
 export default function AlertsFullTable({ filters }: { filters: AlertsFilters }) {
-  const { data, loading, error } = useAlerts();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
+  const { data, total, loading, error } = useAlerts({ page, pageSize, filters });
   const [overrides, setOverrides] = useState<Record<string, EstadoAlerta>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -19,30 +19,15 @@ export default function AlertsFullTable({ filters }: { filters: AlertsFilters })
     return base.map((a) => (overrides[a.id] ? { ...a, estado: overrides[a.id] } : a));
   }, [data, overrides]);
 
-  const filtered = useMemo(() => {
-    const searchLower = filters.search.trim().toLowerCase();
-    return mapped.filter((a) => {
-      if (filters.estado !== "Todos" && a.estado !== filters.estado) return false;
-      if (filters.severidad !== "Todas" && a.severidad !== filters.severidad) return false;
-      if (filters.tipo !== "Todos" && a.tipo !== filters.tipo) return false;
-      if (filters.ciudad !== "Todas" && a.ciudad !== filters.ciudad) return false;
-      if (searchLower) {
-        const haystack = `${a.tipo} ${a.descripcion} ${a.nombreEquipo} ${a.codigo} ${a.responsable}`.toLowerCase();
-        if (!haystack.includes(searchLower)) return false;
-      }
-      return true;
-    });
-  }, [mapped, filters]);
-
   useEffect(() => {
     setPage(1);
   }, [filters]);
 
   const activeAlert = activeId ? (mapped.find((a) => a.id === activeId) ?? null) : null;
 
-  const totalResults = filtered.length;
+  const totalResults = total;
   const totalPages = Math.ceil(totalResults / pageSize) || 1;
-  const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const pageData = mapped;
 
   function handleUpdated(id: string, estado: EstadoAlerta) {
     setOverrides((prev) => ({ ...prev, [id]: estado }));
@@ -172,9 +157,8 @@ export default function AlertsFullTable({ filters }: { filters: AlertsFilters })
                 <button
                   key={n}
                   onClick={() => setPage(n as number)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-                    page === n ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
-                  }`}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${page === n ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
+                    }`}
                 >
                   {n}
                 </button>

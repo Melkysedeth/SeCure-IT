@@ -48,21 +48,21 @@ export default function ColombiaMap() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-[420px] flex flex-col">
+        <div className="px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-sm font-semibold text-[#3d3d42]">Ubicación de activos</h2>
         </div>
-        <div className="h-[300px] w-full flex items-center justify-center text-sm text-[#9898a0]">Cargando mapa...</div>
+        <div className="flex-1 w-full">Cargando mapa...</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-[420px] flex flex-col">
+      <div className="px-5 py-4 border-b border-gray-100 flex-shrink-0">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Ubicación de activos</h2>
       </div>
-      <div className="h-[300px] w-full">
+      <div className="flex-1 w-full">
         <MapContainer center={[7.5, -74.5]} zoom={6} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }}>
           <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           {ciudadesData.map((ciudad) => (

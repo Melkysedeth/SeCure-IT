@@ -114,15 +114,16 @@ export default function RegisterAssetModal({ open, onClose, onSave, initialData 
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-6">
-          {/* Información básica */}
           <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-[#3d3d42]">Información básica</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <h3 className="text-sm font-semibold text-[#3d3d42]">Datos de registro</h3>
+            <p className="text-xs text-[#9898a0] -mt-2">
+              El resto de la información (nombre del equipo, serial, marca, modelo, sistema operativo,
+              procesador, RAM, almacenamiento, MAC e IP) se completa automáticamente con el primer
+              reporte del agente instalado.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
               <Field label="Código del activo" required>
                 <input className={inputClass} placeholder="Ej: P154" value={form.codigo} onChange={(e) => update("codigo", e.target.value)} required />
-              </Field>
-              <Field label="Nombre del equipo" required>
-                <input className={inputClass} placeholder="Ej: HP EliteBook 840" value={form.nombre_equipo} onChange={(e) => update("nombre_equipo", e.target.value)} required />
               </Field>
               <Field label="Tipo de activo" required>
                 <select className={inputClass} value={form.tipo} onChange={(e) => update("tipo", e.target.value as TipoActivo)} required>
@@ -135,39 +136,6 @@ export default function RegisterAssetModal({ open, onClose, onSave, initialData 
                 </select>
               </Field>
 
-              <Field label="Número de serie">
-                <input className={inputClass} placeholder="Ej: 5CD1234A8C" value={form.serial} onChange={(e) => update("serial", e.target.value)} />
-              </Field>
-              <Field label="Marca" required>
-                <select className={inputClass} value={form.marca} onChange={(e) => update("marca", e.target.value)} required>
-                  <option value="">Seleccionar marca</option>
-                  {MARCAS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Modelo" required>
-                <input className={inputClass} placeholder="Ej: EliteBook 840 G8" value={form.modelo} onChange={(e) => update("modelo", e.target.value)} required />
-              </Field>
-
-              <Field label="Sistema operativo">
-                <input className={inputClass} placeholder="Ej: Windows 11 Pro" value={form.sistema_op} onChange={(e) => update("sistema_op", e.target.value)} />
-              </Field>
-              <Field label="Versión">
-                <input className={inputClass} placeholder="Ej: 23H2" value={form.version_so} onChange={(e) => update("version_so", e.target.value)} />
-              </Field>
-              <Field label="Dominio">
-                <input className={inputClass} placeholder="Ej: EMPRESA.LOCAL" value={form.dominio} onChange={(e) => update("dominio", e.target.value)} />
-              </Field>
-            </div>
-          </div>
-
-          {/* Asignación */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-[#3d3d42]">Asignación</h3>
-            <div className="grid grid-cols-3 gap-4">
               <Field label="Tipo de documento" required>
                 <select className={inputClass} value={form.tipo_documento} onChange={(e) => update("tipo_documento", e.target.value as TipoDocumento)} required>
                   <option value="">Seleccionar</option>
@@ -181,13 +149,14 @@ export default function RegisterAssetModal({ open, onClose, onSave, initialData 
               <Field label="N° de documento" required>
                 <input className={inputClass} placeholder="Ej: 1045745327" value={form.numero_documento} onChange={(e) => update("numero_documento", e.target.value)} required />
               </Field>
+
               <Field label="Nombre del responsable" required>
                 <input className={inputClass} placeholder="Ej: Jessica Molina" value={form.nombre_responsable} onChange={(e) => update("nombre_responsable", e.target.value)} required />
               </Field>
-
               <Field label="Departamento / Área" required>
                 <input className={inputClass} placeholder="Ej: Dirección ejecutiva / Asuntos médicos" value={form.departamento} onChange={(e) => update("departamento", e.target.value)} required />
               </Field>
+
               <Field label="Sede asignada" required>
                 <select className={inputClass} value={form.sede_id} onChange={(e) => update("sede_id", e.target.value)} required>
                   <option value="">Seleccionar sede</option>
@@ -218,29 +187,8 @@ export default function RegisterAssetModal({ open, onClose, onSave, initialData 
             </Field>
           </div>
 
-          {/* Specs técnicas */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-[#3d3d42]">Especificaciones técnicas (opcional)</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Procesador (CPU)">
-                <input className={inputClass} placeholder="Ej: Intel Core i5-1135G7" value={form.procesador} onChange={(e) => update("procesador", e.target.value)} />
-              </Field>
-              <Field label="Memoria RAM">
-                <input className={inputClass} placeholder="Ej: 16 GB" value={form.memoria_ram} onChange={(e) => update("memoria_ram", e.target.value)} />
-              </Field>
-              <Field label="Almacenamiento">
-                <input className={inputClass} placeholder="Ej: 512 GB SSD" value={form.almacenamiento} onChange={(e) => update("almacenamiento", e.target.value)} />
-              </Field>
-
-              <Field label="Dirección MAC">
-                <input className={inputClass} placeholder="Ej: 00:1A:2B:3C:4D:5E" value={form.direccion_mac} onChange={(e) => update("direccion_mac", e.target.value)} />
-              </Field>
-            </div>
-          </div>
-
           {error && <div className="px-4 py-2.5 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">{error}</div>}
 
-          {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
             <button
               type="button"

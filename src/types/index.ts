@@ -27,6 +27,9 @@ export interface Activo {
   categoria: string;
   tipo: TipoActivo;
   nombre_equipo: string | null;
+  sede_id: string | null;
+  sede_temporal_id: string | null;
+  sede_temporal_hasta: string | null;
 
   marca: string;
   modelo: string;
@@ -44,8 +47,6 @@ export interface Activo {
   numero_documento: string | null;
   nombre_responsable: string | null;
   departamento: string | null;
-
-  sede_id: string | null;
 
   fecha_registro: string;
   activo: boolean;

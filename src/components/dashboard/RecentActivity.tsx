@@ -30,14 +30,14 @@ export function ActividadReciente() {
   }, [data]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-[420px] flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Últimos reportes</h2>
         <Link to="/historial" className="text-xs text-[#519d99] font-medium hover:underline">
           Ver todas
         </Link>
       </div>
-      <div className="flex flex-col">
+      <div className="flex flex-col overflow-y-auto">
         {loading && <p className="px-5 py-4 text-xs text-[#9898a0]">Cargando...</p>}
         {!loading && recientes.length === 0 && <p className="px-5 py-4 text-xs text-[#9898a0]">Sin reportes registrados aún.</p>}
         {recientes.map((a: any) => {
@@ -53,6 +53,7 @@ export function ActividadReciente() {
                   {a.codigo} - {a.nombre_equipo}
                 </p>
                 <p className="text-[11px] text-[#9898a0]">Reportó desde {a.ubicacion_ciudad ?? "ubicación desconocida"}</p>
+                <p className="text-[11px] text-[#9898a0]">Usuario: {a.usuario_activo ?? "Sin datos"}</p>
                 <p className="text-[10px] text-[#9898a0] mt-0.5">{timeAgo(a.timestamp_reporte)}</p>
               </div>
             </div>
@@ -64,17 +65,17 @@ export function ActividadReciente() {
 }
 
 export function AlertasRecientes() {
-  const { data, loading } = useAlerts({ limit: 4 });
+  const { data, loading } = useAlerts({ pageSize: 4 });
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-[#3d3d42]">Alertas recientes</h2>
-        <Link to="/alertas" className="text-xs text-[#519d99] font-medium hover:underline">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-[420px] flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+        <h2 className="text-sm font-semibold text-[#3d3d42]">Últimos reportes</h2>
+        <Link to="/historial" className="text-xs text-[#519d99] font-medium hover:underline">
           Ver todas
         </Link>
       </div>
-      <div className="flex flex-col">
+      <div className="flex flex-col overflow-y-auto">
         {loading && <p className="px-5 py-4 text-xs text-[#9898a0]">Cargando...</p>}
         {!loading && data.length === 0 && <p className="px-5 py-4 text-xs text-[#9898a0]">Sin alertas registradas.</p>}
         {data.map((al: any) => (
@@ -87,6 +88,7 @@ export function AlertasRecientes() {
                 {al.codigo} - {al.nombre_equipo}
               </p>
               <p className="text-[11px] text-[#9898a0]">{al.descripcion}</p>
+              <p className="text-[11px] text-[#9898a0]">Usuario: {al.usuario_activo ?? "Sin datos"}</p>
               <p className="text-[10px] text-[#9898a0] mt-0.5">{timeAgo(al.created_at)}</p>
             </div>
           </div>

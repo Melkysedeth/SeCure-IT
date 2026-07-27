@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export function useAssetDetail(codigo: string | undefined) {
@@ -6,31 +6,34 @@ export function useAssetDetail(codigo: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!codigo) {
       setLoading(false);
       return;
     }
-    let active = true;
     setLoading(true);
     setError(null);
 
-    supabase
+    const { data, error } = await supabase
       .from("activos_con_reporte")
       .select("*")
       .eq("codigo", codigo)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) setError(error.message);
-        else setData(data);
-        setLoading(false);
-      });
+      .maybeSingle();
 
+    if (error) setError(error.message);
+    else setData(data);
+    setLoading(false);
+  }, [codigo]);
+
+  useEffect(() => {
+    let active = true;
+    fetchData().then(() => {
+      if (!active) return;
+    });
     return () => {
       active = false;
     };
-  }, [codigo]);
+  }, [fetchData]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch: fetchData };
 }

@@ -1,12 +1,20 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAssetDetail } from "../hooks/useAssetDetail";
-import { darDeBajaActivo } from "../lib/assets";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { ChevronRight, Laptop, MoreVertical, Trash2, User, MapPin, Cpu, Network, Monitor, Calendar, Shield, Bell } from "lucide-react";
+import {
+  ChevronRight, Laptop, MoreVertical, Trash2, MapPin, Cpu,
+  Network, Pencil, Monitor, Calendar, Bell, Wifi, WifiOff, Battery, Globe
+} from "lucide-react";
 import { useAlerts } from "../hooks/useAlerts";
+import { useSedes } from "../hooks/useSedes";
+import TrasladoTemporalModal from "../components/assets/TrasladoTemporalModal";
+import { ArrowLeftRight } from "lucide-react";
+import RegisterAssetModal from "../components/assets/RegisterAssetModal";
+import { darDeBajaActivo, actualizarActivo, asignarTrasladoTemporal, cancelarTrasladoTemporal } from "../lib/assets";
+import type { NuevoActivoForm, TipoDocumento } from "../types";
 
 type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
 
@@ -28,6 +36,12 @@ const estadoBadgeClass: Record<Estado, string> = {
   fuera_sede: "bg-orange-100 text-orange-600",
 };
 
+const estadoIcon: Record<Estado, React.ElementType> = {
+  en_linea: Wifi,
+  sin_conexion: WifiOff,
+  fuera_sede: MapPin,
+};
+
 function timeAgo(iso: string | null): string {
   if (!iso) return "Sin datos";
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -42,16 +56,21 @@ function timeAgo(iso: string | null): string {
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("es-CO", {
+  // Supabase devuelve "YYYY-MM-DD HH:mm:ss.SSS" sin sufijo de zona horaria.
+  // Sin 'Z' al final, el navegador lo interpreta como hora LOCAL en vez de UTC.
+  const isoConZ = iso.includes("Z") || iso.includes("+") ? iso : iso.replace(" ", "T") + "Z";
+  return new Date(isoConZ).toLocaleString("es-CO", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Bogota",
   });
 }
 
 interface ActivoRaw {
+  id: string;
   codigo: string;
   nombre_equipo: string | null;
   tipo: string | null;
@@ -76,6 +95,16 @@ interface ActivoRaw {
   longitud: number | null;
   bateria: number | null;
   timestamp_reporte: string | null;
+  sede_temporal_id: string | null;
+  sede_temporal_hasta: string | null;
+  version_so: string | null;
+  dominio: string | null;
+  tipo_documento: TipoDocumento | null;
+  numero_documento: string | null;
+  sede_id: string | null;
+  sede_nombre: string | null;
+  sede_fija_nombre: string | null;
+  observaciones: string | null;
 }
 
 function mapDetalle(a: ActivoRaw) {
@@ -94,6 +123,8 @@ function mapDetalle(a: ActivoRaw) {
     almacenamiento: a.almacenamiento ?? "—",
     direccion_mac: a.direccion_mac ?? "—",
     usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
+    usuario_reporta: a.usuario_activo ?? "Sin datos",
+    sede_asignada: a.sede_fija_nombre ?? "Sin asignar",
     cargo: a.departamento ?? "",
     ip_local: a.ip_local ?? "—",
     red_wifi: a.red_wifi ?? "—",
@@ -105,6 +136,12 @@ function mapDetalle(a: ActivoRaw) {
     bateria: a.bateria ?? null,
     ultima_conexion: timeAgo(a.timestamp_reporte),
     fecha_ultima_conexion: formatDateTime(a.timestamp_reporte),
+    sede_temporal_id: a.sede_temporal_id ?? null,
+    sede_temporal_hasta: a.sede_temporal_hasta ?? null,
+    traslado_vigente: Boolean(a.sede_temporal_id && a.sede_temporal_hasta && new Date(a.sede_temporal_hasta) > new Date()),
+    traslado_hasta_fmt: a.sede_temporal_hasta
+      ? new Date(a.sede_temporal_hasta).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Bogota" })
+      : "—",
   };
 }
 
@@ -112,6 +149,18 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
       <span className="text-xs text-[#9898a0]">{label}</span>
+      <span className="text-sm text-[#3d3d42] font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+function InfoRowIcon({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+      <span className="flex items-center gap-2 text-xs text-[#9898a0]">
+        <Icon size={14} className="text-[#519d99]" />
+        {label}
+      </span>
       <span className="text-sm text-[#3d3d42] font-medium text-right">{value}</span>
     </div>
   );
@@ -132,7 +181,7 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: Rea
 export default function DetalleActivo() {
   const { codigo } = useParams();
   const [tab, setTab] = useState<"info" | "historial">("info");
-  const { data: raw, loading, error } = useAssetDetail(codigo);
+  const { data: raw, loading, error, refetch } = useAssetDetail(codigo);
   const activo = useMemo(() => (raw ? mapDetalle(raw) : null), [raw]);
   const { data: alertasActivo, loading: loadingAlertas } = useAlerts({ activoId: raw?.id });
 
@@ -141,6 +190,54 @@ export default function DetalleActivo() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const { data: sedes } = useSedes();
+  const [trasladoOpen, setTrasladoOpen] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+
+  const editFormData: NuevoActivoForm | null = raw
+    ? {
+      codigo: raw.codigo,
+      nombre_equipo: raw.nombre_equipo ?? "",
+      tipo: (raw.tipo as any) ?? "",
+      serial: raw.serial ?? "",
+      marca: raw.marca ?? "",
+      modelo: raw.modelo ?? "",
+      sistema_op: raw.sistema_op ?? "",
+      version_so: raw.version_so ?? "",
+      dominio: raw.dominio ?? "",
+      nombre_responsable: raw.nombre_responsable ?? "",
+      tipo_documento: raw.tipo_documento ?? "",
+      numero_documento: raw.numero_documento ?? "",
+      departamento: raw.departamento ?? "",
+      sede_id: raw.sede_id ?? "",
+      observaciones: raw.observaciones ?? "",
+      procesador: raw.procesador ?? "",
+      memoria_ram: raw.memoria_ram ?? "",
+      almacenamiento: raw.almacenamiento ?? "",
+      direccion_mac: raw.direccion_mac ?? "",
+    }
+    : null;
+
+  async function handleGuardarEdicion(data: NuevoActivoForm) {
+    if (!raw?.id) return;
+    await actualizarActivo(raw.id, data);
+    refetch();
+    setEditOpen(false);
+  }
+
+  async function handleGuardarTraslado(sedeTemporalId: string, sedeTemporalHasta: string) {
+    if (!raw?.id) return;
+    await asignarTrasladoTemporal(raw.id, sedeTemporalId, sedeTemporalHasta);
+    refetch?.();
+  }
+
+  async function handleCancelarTraslado() {
+    if (!raw?.id) return;
+    await cancelarTrasladoTemporal(raw.id);
+    refetch?.();
+  }
 
   async function handleConfirmDelete() {
     if (!raw?.id) return;
@@ -225,6 +322,26 @@ export default function DetalleActivo() {
                   <Trash2 size={15} />
                   Dar de baja activo
                 </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setEditOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#3d3d42] hover:bg-gray-50 transition-colors"
+                >
+                  <Pencil size={15} />
+                  Editar activo
+                </button>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setTrasladoOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#3d3d42] hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeftRight size={15} />
+                  {activo.traslado_vigente ? "Traslado Temporal" : "Traslado Temporal"}
+                </button>
               </div>
             </>
           )}
@@ -245,6 +362,71 @@ export default function DetalleActivo() {
         }}
       />
 
+      <RegisterAssetModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSave={handleGuardarEdicion}
+        initialData={editFormData}
+      />
+
+      <TrasladoTemporalModal
+        key={`${raw?.sede_temporal_id ?? "none"}-${raw?.sede_temporal_hasta ?? "none"}`}
+        open={trasladoOpen}
+        activoNombre={activo.nombre}
+        sedes={sedes}
+        sedeTemporalActualId={raw?.sede_temporal_id}
+        sedeTemporalActualHasta={raw?.sede_temporal_hasta}
+        onClose={() => setTrasladoOpen(false)}
+        onSave={handleGuardarTraslado}
+        onCancelarTraslado={raw?.sede_temporal_id ? handleCancelarTraslado : undefined}
+      />
+
+      {/* Estado y Usuario asignado destacados */}
+      <div className="grid grid-cols-3 gap-5">
+        <div
+          className="rounded-xl p-5 flex items-center justify-between border"
+          style={{ backgroundColor: `${estadoColor[activo.estado]}14`, borderColor: `${estadoColor[activo.estado]}33` }}
+        >
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: estadoColor[activo.estado] }}>
+              Estado actual
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: estadoColor[activo.estado] }} />
+              <span className="text-lg font-semibold text-[#3d3d42]">{estadoLabel[activo.estado]}</span>
+            </div>
+            <p className="text-xs text-[#9898a0] mt-1">Última conexión: {activo.ultima_conexion}</p>
+            <p className="text-xs text-[#9898a0]">Reportado por: {activo.usuario_reporta}</p>
+            {activo.traslado_vigente && (
+              <p className="text-[11px] font-medium text-blue-600 bg-blue-50 rounded-full px-2 py-0.5 mt-2 inline-block">
+                Traslado autorizado a {raw?.sede_nombre ?? "sede destino"} hasta {activo.traslado_hasta_fmt}
+              </p>
+            )}
+          </div>
+          <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${estadoColor[activo.estado]}22` }}>
+            {(() => {
+              const Icon = estadoIcon[activo.estado];
+              return <Icon size={26} style={{ color: estadoColor[activo.estado] }} />;
+            })()}
+          </div>
+        </div>
+
+        <div className="rounded-xl p-5 flex items-center gap-4 border border-[#519d99]/20 bg-[#519d99]/5">
+          <div className="w-14 h-14 rounded-full bg-[#519d99] flex items-center justify-center text-white text-lg font-bold shrink-0">
+            {activo.usuario
+              .split(" ")
+              .map((p) => p[0])
+              .join("")
+              .slice(0, 2)}
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#519d99]">Usuario asignado</p>
+            <p className="text-base font-semibold text-[#3d3d42]">{activo.usuario}</p>
+            <p className="text-xs text-[#9898a0]">{activo.cargo}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         <button
@@ -255,9 +437,8 @@ export default function DetalleActivo() {
         </button>
         <button
           onClick={() => setTab("historial")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === "historial" ? "border-[#519d99] text-[#519d99]" : "border-transparent text-[#9898a0] hover:text-[#3d3d42]"
-          }`}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === "historial" ? "border-[#519d99] text-[#519d99]" : "border-transparent text-[#9898a0] hover:text-[#3d3d42]"
+            }`}
         >
           Histórico
         </button>
@@ -268,30 +449,6 @@ export default function DetalleActivo() {
         <div className="grid grid-cols-3 gap-5 items-start">
           {/* Columna 1 */}
           <div className="flex flex-col gap-5">
-            <SectionCard title="Estado actual" icon={Shield}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: estadoColor[activo.estado] }} />
-                <span className="text-sm font-medium text-[#3d3d42]">{estadoLabel[activo.estado]}</span>
-              </div>
-              <p className="text-xs text-[#9898a0]">Última conexión: {activo.ultima_conexion}</p>
-              <p className="text-[11px] text-[#9898a0]">{activo.fecha_ultima_conexion}</p>
-            </SectionCard>
-
-            <SectionCard title="Usuario asignado" icon={User}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#519d99] flex items-center justify-center text-white text-sm font-bold">
-                  {activo.usuario
-                    .split(" ")
-                    .map((p) => p[0])
-                    .join("")}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[#3d3d42]">{activo.usuario}</p>
-                  <p className="text-xs text-[#9898a0]">{activo.cargo}</p>
-                </div>
-              </div>
-            </SectionCard>
-
             <SectionCard title="Información del equipo" icon={Monitor}>
               <InfoRow label="Código" value={activo.codigo} />
               <InfoRow label="Número de serie" value={activo.serial} />
@@ -299,6 +456,8 @@ export default function DetalleActivo() {
               <InfoRow label="Tipo de activo" value={activo.tipo} />
               <InfoRow label="Departamento" value={activo.departamento} />
               <InfoRow label="Fecha de registro" value={activo.fecha_registro} />
+              <InfoRow label="Sede asignada" value={activo.sede_asignada} />
+              <InfoRow label="Usuario que reporta (agente)" value={activo.usuario_reporta} />
             </SectionCard>
           </div>
 
@@ -312,10 +471,10 @@ export default function DetalleActivo() {
             </SectionCard>
 
             <SectionCard title="Información rápida" icon={Network}>
-              <InfoRow label="Batería" value={activo.bateria !== null ? `${activo.bateria}%` : "N/A"} />
-              <InfoRow label="Dirección IP" value={activo.ip_local} />
-              <InfoRow label="Red WiFi" value={activo.red_wifi} />
-              <InfoRow label="Sistema operativo" value={activo.sistema_op} />
+              <InfoRowIcon icon={Battery} label="Batería" value={activo.bateria !== null ? `${activo.bateria}%` : "N/A"} />
+              <InfoRowIcon icon={Globe} label="Dirección IP" value={activo.ip_local} />
+              <InfoRowIcon icon={Wifi} label="Red WiFi" value={activo.red_wifi} />
+              <InfoRowIcon icon={Monitor} label="Sistema operativo" value={activo.sistema_op} />
             </SectionCard>
           </div>
 
@@ -338,7 +497,6 @@ export default function DetalleActivo() {
           </div>
         </div>
       )}
-
       {/* Contenido: Historial */}
       {tab === "historial" && (
         <div className="flex flex-col gap-5">

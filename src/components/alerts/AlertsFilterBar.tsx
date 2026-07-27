@@ -1,7 +1,7 @@
 import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useMemo } from "react";
-import { useAlerts } from "../../hooks/useAlerts";
-import { mapAlerta, SEVERITY_META, type Severidad } from "../../lib/alerts";
+import { useAlertsFilterOptions } from "../../hooks/useAlertsFilterOptions";
+import { SEVERITY_META, type Severidad } from "../../lib/alerts";
 
 export interface AlertsFilters {
   search: string;
@@ -39,11 +39,10 @@ export const DEFAULT_ALERTS_FILTERS: AlertsFilters = {
 };
 
 export default function AlertsFilterBar({ filters, onChange }: Props) {
-  const { data } = useAlerts();
-  const mapped = useMemo(() => data.map(mapAlerta), [data]);
+  const { data: opciones } = useAlertsFilterOptions();
 
-  const tipos = useMemo(() => uniqueSorted(mapped.map((a) => a.tipo)), [mapped]);
-  const ciudades = useMemo(() => uniqueSorted(mapped.map((a) => a.ciudad)), [mapped]);
+  const tipos = useMemo(() => uniqueSorted(opciones.map((o) => o.tipo)), [opciones]);
+  const ciudades = useMemo(() => uniqueSorted(opciones.map((o) => o.ciudad)), [opciones]);
 
   function set<K extends keyof AlertsFilters>(key: K, value: AlertsFilters[K]) {
     onChange({ ...filters, [key]: value });

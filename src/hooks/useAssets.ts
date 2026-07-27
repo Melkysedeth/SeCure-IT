@@ -1,19 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { useCachedQuery } from "../lib/queryCache";
-
-export interface ActivoConReporte {
-  id: string;
-  codigo: string;
-  nombre: string;
-  tipo: string;
-  usuario_activo: string | null;
-  ubicacion_ciudad: string | null;
-  latitud: number | null;
-  longitud: number | null;
-  bateria: number | null;
-  estado: string | null;
-  timestamp_reporte: string | null;
-}
+import type { ActivoConReporte } from "../types";
 
 const ASSETS_KEY = "activos_con_reporte:all";
 

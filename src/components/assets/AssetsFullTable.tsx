@@ -14,6 +14,7 @@ export interface Activo {
   id: string;
   codigo: string;
   nombre: string;
+  usuario_reporta: string;
   usuario: string;
   cargo: string;
   ubicacion: string;
@@ -24,16 +25,16 @@ export interface Activo {
   numero_documento: string;
 }
 
-function timeAgo(iso: string | null): string {
+function formatDateTime(iso: string | null): string {
   if (!iso) return "Sin datos";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "Hace instantes";
-  if (mins < 60) return `Hace ${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Hace ${hours} horas`;
-  const days = Math.floor(hours / 24);
-  return `Hace ${days} día${days > 1 ? "s" : ""}`;
+  const isoConZ = iso.includes("Z") || iso.includes("+") ? iso : iso.replace(" ", "T") + "Z";
+  return new Date(isoConZ).toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
 }
 
 export function mapActivo(a: any): Activo {
@@ -41,13 +42,14 @@ export function mapActivo(a: any): Activo {
     id: a.id,
     codigo: a.codigo,
     nombre: a.nombre_equipo ?? "Sin nombre",
+    usuario_reporta: a.usuario_activo ?? "Sin datos",
     usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
     cargo: a.departamento ?? "",
     ubicacion: a.ubicacion_ciudad ?? a.ciudad_asignada ?? "—",
     sede: a.ciudad_asignada ?? "—",
     estado: (a.estado as Estado) ?? "sin_conexion",
     bateria: a.bateria ?? null,
-    ultima_conexion: timeAgo(a.timestamp_reporte),
+    ultima_conexion: formatDateTime(a.timestamp_reporte),
     numero_documento: a.numero_docume ?? "",
   };
 }
@@ -204,7 +206,10 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
                     <input type="checkbox" className="rounded border-gray-300 accent-[#519d99]" />
                   </td>
                   <td className="px-5 py-3 font-mono text-xs text-[#3d3d42] font-medium">{activo.codigo}</td>
-                  <td className="px-5 py-3 text-[#3d3d42] font-medium whitespace-nowrap">{activo.nombre}</td>
+                  <td className="px-5 py-3 whitespace-nowrap">
+                    <p className="text-[#3d3d42] font-medium">{activo.nombre}</p>
+                    <p className="text-[11px] text-[#9898a0]">{activo.usuario_reporta}</p>
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-7 h-7 rounded-full ${getAvatarColor(activo.usuario)} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
@@ -301,9 +306,8 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
               <button
                 key={n}
                 onClick={() => setPage(n as number)}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-                  page === n ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
-                }`}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${page === n ? "bg-[#519d99] text-white" : "text-[#686971] hover:bg-gray-50 border border-gray-200"
+                  }`}
               >
                 {n}
               </button>

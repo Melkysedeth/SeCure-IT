@@ -188,7 +188,7 @@ X-Agent-Token: [token secreto configurado en el agente]
 - [x] Página de Alertas (generación automática vía trigger + resolución manual/automática)
 - [x] Página de Historial (con filtros y exportación a Excel)
 - [ ] Edge Function: endpoint del agente (`POST /api/agent/report`) — **pendiente**
-- [ ] Página Configuración — **pendiente**
+- [ ] Página Configuración — Creacion y modificacion de Sedes
 - [ ] Página Usuarios — **pendiente**
 
 
