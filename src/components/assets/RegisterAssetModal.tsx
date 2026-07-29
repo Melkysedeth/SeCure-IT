@@ -17,7 +17,6 @@ const TIPOS: { value: TipoActivo; label: string }[] = [
   { value: "celular", label: "Celular" },
 ];
 
-const MARCAS = ["Dell", "HP", "Lenovo", "Asus", "Samsung", "Xiaomi", "Motorola", "Otra"];
 const DOCUMENTOS: { value: TipoDocumento; label: string }[] = [
   { value: "CC", label: "Cédula de Ciudadanía" },
   { value: "CE", label: "Cédula de Extranjería" },
