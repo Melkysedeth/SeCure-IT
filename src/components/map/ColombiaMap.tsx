@@ -48,8 +48,8 @@ export default function ColombiaMap() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-[420px] flex flex-col">
-        <div className="px-5 py-4 border-b border-gray-100 flex-shrink-0">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-105 flex flex-col">
+        <div className="px-5 py-4 border-b border-gray-100 shrink-0">
           <h2 className="text-sm font-semibold text-[#3d3d42]">Ubicación de activos</h2>
         </div>
         <div className="flex-1 w-full">Cargando mapa...</div>
@@ -58,8 +58,8 @@ export default function ColombiaMap() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-[420px] flex flex-col">
-      <div className="px-5 py-4 border-b border-gray-100 flex-shrink-0">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-105 flex flex-col">
+      <div className="px-5 py-4 border-b border-gray-100 shrink-0">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Ubicación de activos</h2>
       </div>
       <div className="flex-1 w-full">

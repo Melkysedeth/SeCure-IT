@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
+export type OrigenActivo = "laptop" | "movil";
+
 export function useAssetDetail(codigo: string | undefined) {
   const [data, setData] = useState<any | null>(null);
+  const [origen, setOrigen] = useState<OrigenActivo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,14 +17,30 @@ export function useAssetDetail(codigo: string | undefined) {
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase
-      .from("activos_con_reporte")
-      .select("*")
-      .eq("codigo", codigo)
-      .maybeSingle();
+    const laptop = await supabase.from("activos_con_reporte").select("*").eq("codigo", codigo).maybeSingle();
 
-    if (error) setError(error.message);
-    else setData(data);
+    if (laptop.error) {
+      setError(laptop.error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (laptop.data) {
+      setData(laptop.data);
+      setOrigen("laptop");
+      setLoading(false);
+      return;
+    }
+
+    // No es laptop/desktop — probamos en móviles antes de dar por perdido.
+    const movil = await supabase.from("activos_moviles_con_reporte").select("*").eq("codigo", codigo).maybeSingle();
+
+    if (movil.error) {
+      setError(movil.error.message);
+    } else {
+      setData(movil.data);
+      setOrigen(movil.data ? "movil" : null);
+    }
     setLoading(false);
   }, [codigo]);
 
@@ -35,5 +54,5 @@ export function useAssetDetail(codigo: string | undefined) {
     };
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, origen, loading, error, refetch: fetchData };
 }

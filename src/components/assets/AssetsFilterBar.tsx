@@ -1,10 +1,12 @@
-import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { useMemo } from "react";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAssets } from "../../hooks/useAssets";
 
 export interface AssetsFilters {
   search: string;
   estado: string;
+  tipo: string;
   ubicacion: string;
   usuario: string;
   departamento: string;
@@ -22,6 +24,14 @@ const estadoOptions = [
   { value: "fuera_sede", label: "Fuera de sede" },
 ];
 
+const tipoOptions = [
+  { value: "Todos", label: "Todos" },
+  { value: "laptop", label: "Laptop" },
+  { value: "desktop", label: "Desktop" },
+  { value: "celular", label: "Celular" },
+  { value: "tablet", label: "Tablet" },
+];
+
 function uniqueSorted(values: (string | null | undefined)[]): string[] {
   const set = new Set(values.filter((v): v is string => !!v && v.trim() !== ""));
   return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -29,6 +39,19 @@ function uniqueSorted(values: (string | null | undefined)[]): string[] {
 
 export default function AssetsFilterBar({ filters, onChange }: Props) {
   const { data } = useAssets();
+
+  // La búsqueda ya no vive aquí: se escribe en el buscador del Header,
+  // que la guarda en ?q= de la URL. Este efecto la toma de ahí y la
+  // vuelca en filters.search, igual que antes hacía el input local.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    if (q !== filters.search) {
+      onChange({ ...filters, search: q });
+    }
+    // Solo debe reaccionar a cambios en la URL, no en cada render de filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const ubicaciones = useMemo(() => uniqueSorted(data.map((a: any) => a.ubicacion_ciudad ?? a.ciudad_asignada)), [data]);
   const usuarios = useMemo(() => uniqueSorted(data.map((a: any) => a.nombre_responsable ?? a.usuario_activo)), [data]);
@@ -40,6 +63,7 @@ export default function AssetsFilterBar({ filters, onChange }: Props) {
 
   const selects: { key: keyof AssetsFilters; label: string; options: { value: string; label: string }[] }[] = [
     { key: "estado", label: "Estado", options: estadoOptions },
+    { key: "tipo", label: "Tipo", options: tipoOptions },
     { key: "ubicacion", label: "Ubicación", options: [{ value: "Todas", label: "Todas" }, ...ubicaciones.map((u) => ({ value: u, label: u }))] },
     { key: "usuario", label: "Usuario", options: [{ value: "Todos", label: "Todos" }, ...usuarios.map((u) => ({ value: u, label: u }))] },
     { key: "departamento", label: "Departamento", options: [{ value: "Todos", label: "Todos" }, ...departamentos.map((d) => ({ value: d, label: d }))] },
@@ -47,23 +71,8 @@ export default function AssetsFilterBar({ filters, onChange }: Props) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap items-end gap-4">
-      {/* Búsqueda */}
-      <div className="w-130 flex-shrink-0">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9898a0]" size={16} />
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(e) => set("search", e.target.value)}
-            placeholder="Buscar por código, nombre, usuario o documento..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]"
-          />
-        </div>
-      </div>
-
-      {/* Selects */}
       {selects.map(({ key, label, options }) => (
-        <div key={key} className="flex-1 min-w-[140px] flex flex-col gap-1">
+        <div key={key} className="flex-1 min-w-35 flex flex-col gap-1">
           <label className="text-xs font-medium text-[#686971]">{label}</label>
           <div className="relative">
             <select
@@ -82,10 +91,15 @@ export default function AssetsFilterBar({ filters, onChange }: Props) {
         </div>
       ))}
 
-      {/* Botón limpiar */}
       <button
-        onClick={() => onChange({ search: "", estado: "Todos", ubicacion: "Todas", usuario: "Todos", departamento: "Todos" })}
-        className="flex-shrink-0 border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors"
+        onClick={() => {
+          // Limpia también el buscador del Header, quitando ?q= de la URL.
+          const next = new URLSearchParams(searchParams);
+          next.delete("q");
+          setSearchParams(next, { replace: true });
+          onChange({ search: "", estado: "Todos", tipo: "Todos", ubicacion: "Todas", usuario: "Todos", departamento: "Todos" });
+        }}
+        className="shrink-0 border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors"
       >
         <SlidersHorizontal size={15} />
         Limpiar filtros

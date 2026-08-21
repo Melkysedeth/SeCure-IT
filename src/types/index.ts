@@ -70,7 +70,7 @@ export interface Reporte {
   timestamp_reporte: string;
 }
 
-export interface ActivoConReporte extends Activo, Omit<Reporte, "id" | "activo_id"> {}
+export interface ActivoConReporte extends Activo, Omit<Reporte, "id" | "activo_id"> { }
 
 // Formulario de registro (lo que llena el usuario en el modal)
 export interface NuevoActivoForm {
@@ -93,4 +93,6 @@ export interface NuevoActivoForm {
   memoria_ram: string;
   almacenamiento: string;
   direccion_mac: string;
+  imei?: string;
+  numero_telefono?: string;
 }

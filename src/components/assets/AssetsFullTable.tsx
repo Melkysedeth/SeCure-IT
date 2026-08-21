@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAssets } from "../../hooks/useAssets";
 import { Link } from "react-router-dom";
-import { Eye, Pencil, MoreHorizontal, MapPin, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import {
+  Eye, Pencil, MoreHorizontal, MapPin, ChevronLeft, ChevronRight, Trash2,
+  Laptop, Monitor, Smartphone, Tablet
+} from "lucide-react";
 import type { AssetsFilters } from "./AssetsFilterBar";
 import { darDeBajaActivo } from "../../lib/assets";
 import ConfirmDialog from "../common/ConfirmDialog";
@@ -13,6 +16,7 @@ export type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
 export interface Activo {
   id: string;
   codigo: string;
+  tipo: string;
   nombre: string;
   usuario_reporta: string;
   usuario: string;
@@ -23,6 +27,8 @@ export interface Activo {
   bateria: number | null;
   ultima_conexion: string;
   numero_documento: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 function formatDateTime(iso: string | null): string {
@@ -41,6 +47,7 @@ export function mapActivo(a: any): Activo {
   return {
     id: a.id,
     codigo: a.codigo,
+    tipo: a.tipo ?? "laptop",
     nombre: a.nombre_equipo ?? "Sin nombre",
     usuario_reporta: a.usuario_activo ?? "Sin datos",
     usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
@@ -51,6 +58,8 @@ export function mapActivo(a: any): Activo {
     bateria: a.bateria ?? null,
     ultima_conexion: formatDateTime(a.timestamp_reporte),
     numero_documento: a.numero_docume ?? "",
+    lat: a.latitud ?? null,
+    lng: a.longitud ?? null,
   };
 }
 
@@ -69,6 +78,23 @@ export const estadoBadge: Record<Estado, { label: string; className: string }> =
   sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600" },
   fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
 };
+
+const tipoConfig: Record<string, { icon: typeof Laptop; label: string; color: string }> = {
+  laptop: { icon: Laptop, label: "Laptop", color: "text-blue-500" },
+  desktop: { icon: Monitor, label: "Desktop", color: "text-blue-500" },
+  celular: { icon: Smartphone, label: "Celular", color: "text-[#519d99]" },
+  tablet: { icon: Tablet, label: "Tablet", color: "text-[#519d99]" },
+};
+
+function TipoBadge({ tipo }: { tipo: string }) {
+  const config = tipoConfig[tipo] ?? tipoConfig.laptop;
+  const Icon = config.icon;
+  return (
+    <div className="flex items-center gap-1.5" title={config.label}>
+      <Icon size={14} className={config.color} />
+    </div>
+  );
+}
 
 function getInitials(nombre: string) {
   return nombre
@@ -89,16 +115,16 @@ function getAvatarColor(nombre: string) {
 function BateriaBar({ value }: { value: number | null }) {
   if (value === null) {
     return (
-      <div className="flex items-center gap-2 min-w-[90px]">
-        <div className="w-14 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0" />
+      <div className="flex items-center gap-2 min-w-22.5">
+        <div className="w-14 h-2 bg-gray-100 rounded-full overflow-hidden shrink-0" />
         <span className="text-xs text-[#9898a0]">N/A</span>
       </div>
     );
   }
   const color = value > 50 ? "bg-green-500" : value > 20 ? "bg-yellow-400" : "bg-red-500";
   return (
-    <div className="flex items-center gap-2 min-w-[90px]">
-      <div className="w-14 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+    <div className="flex items-center gap-2 min-w-22.5">
+      <div className="w-14 h-2 bg-gray-100 rounded-full overflow-hidden shrink-0">
         <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }} />
       </div>
       <span className="text-xs text-[#686971] whitespace-nowrap">{value}%</span>
@@ -110,6 +136,7 @@ export function applyAssetsFilters(mapped: Activo[], filters: AssetsFilters): Ac
   const searchLower = filters.search.trim().toLowerCase();
   return mapped.filter((a) => {
     if (filters.estado !== "Todos" && a.estado !== filters.estado) return false;
+    if (filters.tipo !== "Todos" && a.tipo !== filters.tipo) return false;
     if (filters.ubicacion !== "Todas" && a.ubicacion !== filters.ubicacion) return false;
     if (filters.usuario !== "Todos" && a.usuario !== filters.usuario) return false;
     if (filters.departamento !== "Todos" && a.cargo !== filters.departamento) return false;
@@ -121,7 +148,7 @@ export function applyAssetsFilters(mapped: Activo[], filters: AssetsFilters): Ac
   });
 }
 
-const PAGE_SIZE_OPTIONS = [8, 20, 50];
+const PAGE_SIZE_OPTIONS = [50, 100, 150];
 
 export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFilters; onEdit: (id: string) => void }) {
   const { data, loading, error, refetch } = useAssets();
@@ -138,7 +165,7 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
   }, [alertasRaw]);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(50);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<Activo | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -179,40 +206,48 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1000px] text-sm">
+        <table className="w-full min-w-250 text-sm border-collapse">
           <thead>
-            <tr className="text-[11px] text-[#9898a0] uppercase tracking-wide border-b border-gray-100">
-              <th className="px-5 py-3 text-left w-10">
+            <tr className="bg-slate-100 border-b border-slate-300">
+              <th className="px-4 py-2.5 text-left w-10 border-r border-slate-200">
                 <input type="checkbox" className="rounded border-gray-300 accent-[#519d99]" />
               </th>
-              <th className="px-5 py-3 text-left">Código</th>
-              <th className="px-5 py-3 text-left">Nombre</th>
-              <th className="px-5 py-3 text-left">Usuario</th>
-              <th className="px-5 py-3 text-left">Ubicación</th>
-              <th className="px-5 py-3 text-left">Estado</th>
-              <th className="px-5 py-3 text-left">Batería</th>
-              <th className="px-5 py-3 text-left">Última conexión</th>
-              <th className="px-5 py-3 text-left">Acciones</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Código</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Nombre</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Usuario</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Ubicación</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Estado</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Batería</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Última conexión</th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {pageData.map((activo) => {
+            {pageData.map((activo, idx) => {
               const badge = estadoBadge[activo.estado];
               return (
-                <tr key={activo.codigo} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3">
+                <tr
+                  key={activo.codigo}
+                  className={`border-b border-slate-100 hover:bg-[#519d99]/5 transition-colors ${idx % 2 === 1 ? "bg-slate-100/70" : "bg-white"}`}
+                >
+                  <td className="px-4 py-2.5 border-r border-slate-100">
                     <input type="checkbox" className="rounded border-gray-300 accent-[#519d99]" />
                   </td>
-                  <td className="px-5 py-3 font-mono text-xs text-[#3d3d42] font-medium">{activo.codigo}</td>
-                  <td className="px-5 py-3 whitespace-nowrap">
-                    <p className="text-[#3d3d42] font-medium">{activo.nombre}</p>
-                    <p className="text-[11px] text-[#9898a0]">{activo.usuario_reporta}</p>
-                  </td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5 font-mono text-xs text-[#3d3d42] font-medium border-r border-slate-100">{activo.codigo}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap border-r border-slate-100">
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-full ${getAvatarColor(activo.usuario)} flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
+                      <TipoBadge tipo={activo.tipo} />
+                      <div>
+                        <p className="text-[#3d3d42] font-medium">{activo.nombre}</p>
+                        <p className="text-[11px] text-[#9898a0]">{activo.usuario_reporta}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5 border-r border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-full ${getAvatarColor(activo.usuario)} flex items-center justify-center text-white text-[10px] font-bold shrink-0`}>
                         {getInitials(activo.usuario)}
                       </div>
                       <div className="min-w-0">
@@ -221,16 +256,28 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin size={13} className="text-[#9898a0] flex-shrink-0" />
-                      <div>
-                        <p className="text-[#3d3d42]">{activo.ubicacion}</p>
-                        <p className="text-[11px] text-[#9898a0]">{activo.sede}</p>
+                  <td className="px-4 py-2.5 border-r border-slate-100">
+                    {activo.ubicacion !== "—" ? (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={13} className="text-[#9898a0] shrink-0" />
+                        <div>
+                          <p className="text-[#3d3d42]">{activo.ubicacion}</p>
+                          <p className="text-[11px] text-[#9898a0]">{activo.sede}</p>
+                        </div>
                       </div>
-                    </div>
+                    ) : activo.lat != null && activo.lng != null ? (
+                      <Link
+                        to={`/mapa?lat=${activo.lat}&lng=${activo.lng}&codigo=${activo.codigo}`}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium bg-[#519d99]/10 text-[#519d99] hover:bg-[#519d99]/20 transition-colors"
+                      >
+                        <MapPin size={12} />
+                        Ver en mapa
+                      </Link>
+                    ) : (
+                      <span className="text-[#9898a0] text-xs">Sin ubicación</span>
+                    )}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5 border-r border-slate-100">
                     <div className="flex flex-col gap-1 items-start">
                       <span className={`px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.className}`}>{badge.label}</span>
                       {pendientesPorActivo.has(activo.id) && (
@@ -238,11 +285,11 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5 border-r border-slate-100">
                     <BateriaBar value={activo.bateria} />
                   </td>
-                  <td className="px-5 py-3 text-[#686971] text-xs whitespace-nowrap">{activo.ultima_conexion}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5 text-[#686971] text-xs whitespace-nowrap border-r border-slate-100">{activo.ultima_conexion}</td>
+                  <td className="px-4 py-2.5">
                     <div className="relative flex items-center gap-2 text-[#9898a0]">
                       <Link to={`/activos/${activo.codigo}`} className="hover:text-[#519d99] transition-colors">
                         <Eye size={15} />
@@ -256,7 +303,6 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
 
                       {menuOpenId === activo.id && (
                         <>
-                          {/* Overlay invisible para cerrar el menú al hacer clic afuera */}
                           <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
                           <div className="absolute right-0 top-6 z-20 w-40 bg-white border border-gray-100 rounded-lg shadow-lg py-1">
                             <button

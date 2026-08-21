@@ -44,6 +44,8 @@ const initialForm: NuevoActivoForm = {
   memoria_ram: "",
   almacenamiento: "",
   direccion_mac: "",
+  imei: "",
+  numero_telefono: "",
 };
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -66,6 +68,7 @@ export default function RegisterAssetModal({ open, onClose, onSave, initialData 
   const [error, setError] = useState<string | null>(null);
   const { data: sedes } = useSedes();
   const isEditing = initialData != null;
+  const esMovil = form.tipo === "celular" || form.tipo === "tablet";
 
   useEffect(() => {
     if (open) setForm(initialData ?? initialForm);
@@ -156,21 +159,34 @@ export default function RegisterAssetModal({ open, onClose, onSave, initialData 
                 <input className={inputClass} placeholder="Ej: Dirección ejecutiva / Asuntos médicos" value={form.departamento} onChange={(e) => update("departamento", e.target.value)} required />
               </Field>
 
-              <Field label="Sede asignada" required>
-                <select className={inputClass} value={form.sede_id} onChange={(e) => update("sede_id", e.target.value)} required>
-                  <option value="">Seleccionar sede</option>
-                  {sedes.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre} — {s.ciudad}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              {!esMovil && (
+                <Field label="Sede asignada" required>
+                  <select className={inputClass} value={form.sede_id} onChange={(e) => update("sede_id", e.target.value)} required>
+                    <option value="">Seleccionar sede</option>
+                    {sedes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre} — {s.ciudad}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
             </div>
-            {sedes.length === 0 && (
+            {!esMovil && sedes.length === 0 && (
               <p className="text-xs text-amber-600">
                 Todavía no hay sedes registradas. Créalas primero desde Configuración para poder asignarlas a un activo.
               </p>
+            )}
+
+            {esMovil && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="IMEI">
+                  <input className={inputClass} placeholder="Ej: 356938035643809" value={form.imei} onChange={(e) => update("imei", e.target.value)} />
+                </Field>
+                <Field label="Número de teléfono">
+                  <input className={inputClass} placeholder="Ej: 3001234567" value={form.numero_telefono} onChange={(e) => update("numero_telefono", e.target.value)} />
+                </Field>
+              </div>
             )}
 
             <Field label="Observaciones">

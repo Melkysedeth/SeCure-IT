@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Map as MapIcon, Search, SlidersHorizontal, X, MapPin, Laptop } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -117,15 +118,33 @@ function getColorPrincipal(activos: ActivoMapa[]) {
 function RecenterButton() {
   const map = useMap();
   return (
-    <button onClick={() => map.setView([7.5, -74.5], 6)} className="absolute bottom-24 right-3 z-[1000] bg-white shadow-md rounded-lg p-2 text-[#519d99] hover:bg-gray-50" title="Centrar mapa">
+    <button onClick={() => map.setView([7.5, -74.5], 6)} className="absolute bottom-24 right-3 z-1000 bg-white shadow-md rounded-lg p-2 text-[#519d99] hover:bg-gray-50" title="Centrar mapa">
       <MapPin size={16} />
     </button>
   );
 }
 
+function MapFocus({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([lat, lng], 15);
+  }, [lat, lng, map]);
+  return null;
+}
+
 // ── Componente principal ──────────────────────────────
 export default function Mapa() {
   const { data, loading } = useAssets();
+  const [searchParams] = useSearchParams();
+  const focoLat = searchParams.get("lat");
+  const focoLng = searchParams.get("lng");
+  const focoCodigo = searchParams.get("codigo");
+
+  const focoActivo = useMemo(() => {
+    if (!focoCodigo) return null;
+    return data.find((a: any) => a.codigo === focoCodigo);
+  }, [data, focoCodigo]);
+
   const ciudadesData = useMemo(() => agruparPorCiudad(data), [data]);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [selected, setSelected] = useState<ActivoMapa | null>(null);
@@ -137,6 +156,12 @@ export default function Mapa() {
   const [search, setSearch] = useState("");
   const [ciudadFiltro, setCiudadFiltro] = useState("Todas");
   const [tipoFiltro, setTipoFiltro] = useState("Todos");
+
+  useEffect(() => {
+    if (focoActivo) {
+      setSelected(mapActivo(focoActivo));
+    }
+  }, [focoActivo]);
 
   const totalEnLinea = ciudadesData.flatMap((c) => c.activos).filter((a) => a.estado === "en_linea").length;
   const totalSinConexion = ciudadesData.flatMap((c) => c.activos).filter((a) => a.estado === "sin_conexion").length;
@@ -175,22 +200,21 @@ export default function Mapa() {
 
       {/* Barra superior: búsqueda + filtros + contadores */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-xs">
+        <div className="relative flex-1 min-w-55 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9898a0]" size={16} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar activo..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]"
           />
         </div>
 
         <button
           onClick={() => setFiltersOpen((o) => !o)}
-          className={`border text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-            filtersOpen ? "border-[#519d99] text-[#519d99] bg-[#519d99]/5" : "border-gray-200 text-[#686971] hover:bg-gray-50"
-          }`}
+          className={`border text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${filtersOpen ? "border-[#519d99] text-[#519d99] bg-[#519d99]/5" : "border-gray-200 text-[#686971] hover:bg-gray-50"
+            }`}
         >
           <SlidersHorizontal size={15} />
           Filtros
@@ -210,10 +234,10 @@ export default function Mapa() {
       </div>
 
       {/* Cuerpo: filtros laterales + mapa + panel detalle */}
-      <div className="flex-1 flex gap-4 min-h-[560px]">
+      <div className="flex-1 flex gap-4 min-h-140">
         {/* Panel de filtros */}
         {filtersOpen && (
-          <div className="w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col gap-4 h-fit flex-shrink-0">
+          <div className="w-64 bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col gap-4 shrink-0 h-full">
             <h3 className="text-sm font-semibold text-[#3d3d42]">Filtros</h3>
 
             <div className="flex flex-col gap-2">
@@ -280,6 +304,22 @@ export default function Mapa() {
           <MapContainer center={[7.5, -74.5]} zoom={6} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
             <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <RecenterButton />
+
+            {focoLat && focoLng && (
+              <>
+                <MapFocus lat={parseFloat(focoLat)} lng={parseFloat(focoLng)} />
+                <CircleMarker
+                  center={[parseFloat(focoLat), parseFloat(focoLng)]}
+                  radius={16}
+                  pathOptions={{ fillColor: "#519d99", fillOpacity: 0.85, color: "white", weight: 3 }}
+                >
+                  <Tooltip permanent direction="top" offset={[0, -5]} opacity={1}>
+                    <span className="font-medium">{focoCodigo}</span>
+                  </Tooltip>
+                </CircleMarker>
+              </>
+            )}
+
             {ciudadesFiltradas.map((ciudad) => (
               <CircleMarker
                 key={ciudad.key}
@@ -305,7 +345,7 @@ export default function Mapa() {
           </MapContainer>
 
           {/* Leyenda */}
-          <div className="absolute bottom-3 left-3 bg-white rounded-lg shadow-md p-3 text-xs flex flex-col gap-1.5 z-[1000]">
+          <div className="absolute bottom-3 left-3 bg-white rounded-lg shadow-md p-3 text-xs flex flex-col gap-1.5 z-1000">
             <p className="font-semibold text-[#3d3d42] mb-1">Leyenda</p>
             {(Object.keys(estadoLabel) as Estado[]).map((estado) => (
               <span key={estado} className="flex items-center gap-2 text-[#686971]">
@@ -318,7 +358,7 @@ export default function Mapa() {
 
         {/* Panel de detalle */}
         {selected && (
-          <div className="w-72 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col flex-shrink-0">
+          <div className="w-72 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col shrink-0 h-full">
             <div className="flex items-start justify-between p-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="bg-[#519d99]/10 p-2 rounded-lg">
@@ -337,7 +377,7 @@ export default function Mapa() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-3 p-4 text-sm">
+            <div className="flex flex-col gap-3 p-4 text-sm flex-1 overflow-y-auto">
               <div>
                 <p className="text-[11px] text-[#9898a0]">Usuario</p>
                 <p className="text-[#3d3d42] font-medium">{selected.usuario}</p>
@@ -345,8 +385,18 @@ export default function Mapa() {
               </div>
               <div>
                 <p className="text-[11px] text-[#9898a0]">Ubicación actual</p>
-                <p className="text-[#3d3d42] font-medium">{selected.ciudad}</p>
-                <p className="text-[11px] text-[#9898a0]">{selected.sede}</p>
+                {selected.ciudad !== "—" ? (
+                  <>
+                    <p className="text-[#3d3d42] font-medium">{selected.ciudad}</p>
+                    <p className="text-[11px] text-[#9898a0]">{selected.sede}</p>
+                  </>
+                ) : focoLat && focoLng ? (
+                  <p className="text-[#3d3d42] font-medium text-xs">
+                    {parseFloat(focoLat).toFixed(6)}, {parseFloat(focoLng).toFixed(6)}
+                  </p>
+                ) : (
+                  <p className="text-[#9898a0] text-xs">Sin datos de ubicación</p>
+                )}
               </div>
               <div>
                 <p className="text-[11px] text-[#9898a0]">Última conexión</p>
@@ -373,7 +423,7 @@ export default function Mapa() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-4 border-t border-gray-100 mt-auto">
               <a href={`/activos/${selected.codigo}`} className="block text-center text-sm font-medium text-white bg-[#519d99] hover:bg-[#3d7a76] rounded-lg py-2 transition-colors">
                 Ver detalle del activo →
               </a>

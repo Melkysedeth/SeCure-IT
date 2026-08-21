@@ -10,14 +10,38 @@ interface KPICard {
   icon: typeof Bell;
   iconBg: string;
   iconColor: string;
+  leftBorder: string;
+  waveColor: string;
   filterKey: "estado" | "severidad";
   filterValue: string;
 }
 
 function buildCards({ total, activas, criticas, altas, resueltas }: AlertsKPIData): KPICard[] {
   return [
-    { label: "Total alertas", sublabel: "Todas las alertas", value: total, icon: Bell, iconBg: "bg-[#519d99]/10", iconColor: "text-[#519d99]", filterKey: "estado", filterValue: "Todos" },
-    { label: "Activas", sublabel: "Pendientes por atender", value: activas, icon: AlertCircle, iconBg: "bg-red-100", iconColor: "text-red-500", filterKey: "estado", filterValue: "Activa" },
+    {
+      label: "Total alertas",
+      sublabel: "Todas las alertas",
+      value: total,
+      icon: Bell,
+      iconBg: "bg-[#519d99]/10",
+      iconColor: "text-[#519d99]",
+      leftBorder: "border-l-[#519d99]",
+      waveColor: "text-[#519d99]",
+      filterKey: "estado",
+      filterValue: "Todos",
+    },
+    {
+      label: "Activas",
+      sublabel: "Pendientes por atender",
+      value: activas,
+      icon: AlertCircle,
+      iconBg: "bg-red-100",
+      iconColor: "text-red-500",
+      leftBorder: "border-l-red-400",
+      waveColor: "text-red-400",
+      filterKey: "estado",
+      filterValue: "Activa",
+    },
     {
       label: "Sin Conexión",
       sublabel: "Atención inmediata",
@@ -25,11 +49,35 @@ function buildCards({ total, activas, criticas, altas, resueltas }: AlertsKPIDat
       icon: AlertTriangle,
       iconBg: "bg-orange-100",
       iconColor: "text-orange-500",
+      leftBorder: "border-l-orange-400",
+      waveColor: "text-orange-400",
       filterKey: "severidad",
       filterValue: "critica",
     },
-    { label: "Fuera de Sede", sublabel: "Alta prioridad", value: altas, icon: AlertTriangle, iconBg: "bg-amber-100", iconColor: "text-amber-600", filterKey: "severidad", filterValue: "alta" },
-    { label: "Resueltas", sublabel: "Ya atendidas", value: resueltas, icon: CheckCircle2, iconBg: "bg-green-100", iconColor: "text-green-600", filterKey: "estado", filterValue: "Resuelta" },
+    {
+      label: "Fuera de Sede",
+      sublabel: "Alta prioridad",
+      value: altas,
+      icon: AlertTriangle,
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-600",
+      leftBorder: "border-l-amber-400",
+      waveColor: "text-amber-400",
+      filterKey: "severidad",
+      filterValue: "alta",
+    },
+    {
+      label: "Resueltas",
+      sublabel: "Ya atendidas",
+      value: resueltas,
+      icon: CheckCircle2,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+      leftBorder: "border-l-green-500",
+      waveColor: "text-green-500",
+      filterKey: "estado",
+      filterValue: "Resuelta",
+    },
   ];
 }
 
@@ -48,7 +96,7 @@ export default function AlertsKPICards({
     return (
       <div className="grid grid-cols-5 gap-4">
         {[1, 2, 3, 4, 5].map((n) => (
-          <div key={n} className="bg-white rounded-xl p-4 h-20 shadow-sm border border-gray-100 animate-pulse" />
+          <div key={n} className="bg-white rounded-2xl p-6 h-36 shadow-md border border-gray-100 animate-pulse" />
         ))}
       </div>
     );
@@ -64,23 +112,51 @@ export default function AlertsKPICards({
 
   return (
     <div className="grid grid-cols-5 gap-4">
-      {cards.map(({ label, sublabel, value, icon: Icon, iconBg, iconColor, filterKey, filterValue }) => {
+      {cards.map(({ label, sublabel, value, icon: Icon, iconBg, iconColor, leftBorder, waveColor, filterKey, filterValue }) => {
         const isActive = filters?.[filterKey] === filterValue;
+        const gradientId = `wave-alert-${label.replace(/\s+/g, "-").toLowerCase()}`;
         return (
           <div
             key={label}
             onClick={() => handleClick(filterKey, filterValue)}
-            className={`bg-white rounded-xl p-4 flex items-center gap-4 shadow-sm border cursor-pointer transition-colors hover:border-[#519d99]/40 ${isActive ? "border-[#519d99] ring-1 ring-[#519d99]/30" : "border-gray-100"
+            className={`relative overflow-hidden bg-white rounded-2xl pl-6 pr-5 pt-6 pb-4 flex flex-col gap-2 shadow-md shadow-slate-900/10 border-y border-r ${leftBorder} border-l-[3px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-900/15 ${isActive ? "border-y-[#519d99] border-r-[#519d99] ring-2 ring-[#519d99]/25" : "border-y-gray-100 border-r-gray-100"
               }`}
           >
-            <div className={`${iconBg} p-3 rounded-lg`}>
-              <Icon size={20} className={iconColor} />
+            <div className="flex items-center gap-4">
+              {/* Icono en círculo claro */}
+              <div className={`shrink-0 flex items-center justify-center w-14 h-14 rounded-full ${iconBg}`}>
+                <Icon size={24} className={iconColor} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-3xl leading-tight font-bold text-slate-800">{value}</p>
+                <p className="text-sm font-semibold text-slate-700 mt-1">{label}</p>
+                <p className="text-xs text-slate-400">{sublabel}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-[#3d3d42]">{value}</p>
-              <p className="text-xs font-medium text-[#3d3d42]">{label}</p>
-              <p className="text-[11px] text-[#9898a0]">{sublabel}</p>
-            </div>
+
+            {/* Línea de datos irregular, ascendente, sutil */}
+            <svg viewBox="0 0 200 40" preserveAspectRatio="none" className={`w-full h-6 ${waveColor}`}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M12,31 L24,27 L34,30 L46,21 L57,24 L68,14 L80,18 L92,9 L104,13 L116,7 L128,11 L140,5 L152,9 L164,4 L176,8 L188,3 L188,40 L12,40 Z"
+                fill={`url(#${gradientId})`}
+              />
+              <path
+                d="M12,31 L24,27 L34,30 L46,21 L57,24 L68,14 L80,18 L92,9 L104,13 L116,7 L128,11 L140,5 L152,9 L164,4 L176,8 L188,3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.4"
+              />
+            </svg>
           </div>
         );
       })}

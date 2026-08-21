@@ -89,3 +89,40 @@ export async function cancelarTrasladoTemporal(activoId: string): Promise<void> 
     throw new Error(`No se pudo cancelar el traslado temporal: ${error.message}`);
   }
 }
+
+export async function actualizarActivoMovil(id: string, data: NuevoActivoForm): Promise<void> {
+  const { data: filas, error } = await supabase
+    .from("activos_moviles")
+    .update({
+      codigo: data.codigo,
+      tipo: data.tipo,
+      tipo_documento: data.tipo_documento || null,
+      numero_documento: data.numero_documento || null,
+      nombre_responsable: data.nombre_responsable || null,
+      departamento: data.departamento || null,
+      observaciones: data.observaciones || null,
+      imei: data.imei || null,
+      numero_telefono: data.numero_telefono || null,
+    })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    throw new Error(`No se pudo actualizar el activo móvil: ${error.message}`);
+  }
+  if (!filas || filas.length === 0) {
+    throw new Error("El activo no se actualizó — el ID no coincide con ningún registro en activos_moviles.");
+  }
+}
+
+export async function darDeBajaActivoMovil(id: string): Promise<void> {
+  const { error: reportesError } = await supabase.from("reportes_moviles").delete().eq("movil_id", id);
+  if (reportesError) {
+    throw new Error(`No se pudieron eliminar los reportes del activo: ${reportesError.message}`);
+  }
+
+  const { error: activoError } = await supabase.from("activos_moviles").delete().eq("id", id);
+  if (activoError) {
+    throw new Error(`No se pudo eliminar el activo: ${activoError.message}`);
+  }
+}

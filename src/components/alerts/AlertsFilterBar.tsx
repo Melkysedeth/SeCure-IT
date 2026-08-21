@@ -1,5 +1,6 @@
-import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { useMemo } from "react";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAlertsFilterOptions } from "../../hooks/useAlertsFilterOptions";
 import { SEVERITY_META, type Severidad } from "../../lib/alerts";
 
@@ -41,6 +42,19 @@ export const DEFAULT_ALERTS_FILTERS: AlertsFilters = {
 export default function AlertsFilterBar({ filters, onChange }: Props) {
   const { data: opciones } = useAlertsFilterOptions();
 
+  // La búsqueda ya no vive aquí: se escribe en el buscador del Header,
+  // que la guarda en ?q= de la URL. Este efecto la toma de ahí y la
+  // vuelca en filters.search, igual que antes hacía el input local.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    if (q !== filters.search) {
+      onChange({ ...filters, search: q });
+    }
+    // Solo debe reaccionar a cambios en la URL, no en cada render de filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const tipos = useMemo(() => uniqueSorted(opciones.map((o) => o.tipo)), [opciones]);
   const ciudades = useMemo(() => uniqueSorted(opciones.map((o) => o.ciudad)), [opciones]);
 
@@ -57,23 +71,9 @@ export default function AlertsFilterBar({ filters, onChange }: Props) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap items-end gap-4">
-      {/* Búsqueda */}
-      <div className="w-130 flex-shrink-0">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9898a0]" size={16} />
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(e) => set("search", e.target.value)}
-            placeholder="Buscar por alerta, activo o responsable..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#519d99]/30 focus:border-[#519d99]"
-          />
-        </div>
-      </div>
-
       {/* Selects */}
       {selects.map(({ key, label, options }) => (
-        <div key={key} className="flex-1 min-w-[140px] flex flex-col gap-1">
+        <div key={key} className="flex-1 min-w-35 flex flex-col gap-1">
           <label className="text-xs font-medium text-[#686971]">{label}</label>
           <div className="relative">
             <select
@@ -94,8 +94,14 @@ export default function AlertsFilterBar({ filters, onChange }: Props) {
 
       {/* Botón limpiar */}
       <button
-        onClick={() => onChange(DEFAULT_ALERTS_FILTERS)}
-        className="flex-shrink-0 border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors"
+        onClick={() => {
+          // Limpia también el buscador del Header, quitando ?q= de la URL.
+          const next = new URLSearchParams(searchParams);
+          next.delete("q");
+          setSearchParams(next, { replace: true });
+          onChange(DEFAULT_ALERTS_FILTERS);
+        }}
+        className="shrink-0 border border-gray-200 text-[#686971] text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition-colors"
       >
         <SlidersHorizontal size={15} />
         Limpiar filtros

@@ -9,7 +9,7 @@ import AssetsFilterBar, { type AssetsFilters } from "../components/assets/Assets
 import AssetsFullTable, { mapActivo, applyAssetsFilters, estadoBadge } from "../components/assets/AssetsFullTable";
 import RegisterAssetModal from "../components/assets/RegisterAssetModal";
 import { exportRowsToExcel } from "../lib/exportExcel";
-import { actualizarActivo } from "../lib/assets";
+import { actualizarActivo, actualizarActivoMovil } from "../lib/assets";
 import type { NuevoActivoForm } from "../types";
 
 export default function Activos() {
@@ -63,6 +63,7 @@ export default function Activos() {
   const [filters, setFilters] = useState<AssetsFilters>({
     search: "",
     estado: estadoInicial,
+    tipo: "Todos",
     ubicacion: "Todas",
     usuario: "Todos",
     departamento: "Todos",
@@ -91,10 +92,35 @@ export default function Activos() {
   }
 
   async function handleSave(data: NuevoActivoForm) {
+    const esMovil = data.tipo === "celular" || data.tipo === "tablet";
+
     if (editId) {
-      await actualizarActivo(editId, data);
+      if (esMovil) {
+        await actualizarActivoMovil(editId, data);
+      } else {
+        await actualizarActivo(editId, data);
+      }
       refetch();
       handleCloseModal();
+      return;
+    }
+
+    if (esMovil) {
+      const { error } = await supabase.from("activos_moviles").insert({
+        codigo: data.codigo,
+        tipo: data.tipo,
+        tipo_documento: data.tipo_documento || null,
+        numero_documento: data.numero_documento || null,
+        nombre_responsable: data.nombre_responsable || null,
+        departamento: data.departamento || null,
+        sede_id: data.sede_id || null,
+        observaciones: data.observaciones || null,
+      });
+
+      if (error) throw new Error(error.message);
+
+      refetch();
+      setModalOpen(false);
       return;
     }
 
