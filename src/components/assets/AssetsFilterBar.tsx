@@ -22,6 +22,7 @@ const estadoOptions = [
   { value: "en_linea", label: "En línea" },
   { value: "sin_conexion", label: "Sin conexión" },
   { value: "fuera_sede", label: "Fuera de sede" },
+  { value: "nunca_reportado", label: "Nunca reportado" },
 ];
 
 const tipoOptions = [

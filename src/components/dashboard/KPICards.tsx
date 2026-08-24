@@ -1,8 +1,8 @@
 import { Monitor, Wifi, MapPin, WifiOff, Bell } from "lucide-react";
 import { useMemo } from "react";
 import { useAssets } from "../../hooks/useAssets";
-import { useAlerts } from "../../hooks/useAlerts";
-import { mapAlerta } from "../../lib/alerts";
+import { useAllAlerts } from "../../hooks/useAllAlerts";
+import { DEFAULT_ALERTS_FILTERS } from "../alerts/AlertsFilterBar";
 import { useNavigate } from "react-router-dom";
 
 interface CardDef {
@@ -22,7 +22,9 @@ function buildCards(data: ReturnType<typeof useAssets>["data"], alertasActivas: 
   const total = data.length;
   const enLinea = data.filter((a: any) => a.estado === "en_linea").length;
   const fueraDeSede = data.filter((a: any) => a.estado === "fuera_sede").length;
-  const sinConexion = data.filter((a: any) => a.estado === "sin_conexion").length;
+  const sinConexion = data.filter(
+    (a: any) => a.estado === "sin_conexion" || a.estado === "nunca_reportado"
+  ).length;
   const pct = total > 0 ? ((enLinea / total) * 100).toFixed(1) : "0";
 
   return [
@@ -93,10 +95,10 @@ export default function KPICards({
   onCardClick?: (estado: string) => void;
 } = {}) {
   const { data, loading } = useAssets();
-  const { data: alertas } = useAlerts();
+  const { data: alertas } = useAllAlerts({ page: 1, pageSize: 1000, filters: DEFAULT_ALERTS_FILTERS });
   const navigate = useNavigate();
 
-  const alertasActivas = useMemo(() => alertas.filter((raw) => mapAlerta(raw).estado === "Activa").length, [alertas]);
+  const alertasActivas = useMemo(() => alertas.filter((a) => a.estado === "Activa").length, [alertas]);
   const cards = useMemo(() => buildCards(data, alertasActivas), [data, alertasActivas]);
 
   if (loading) {
@@ -125,10 +127,9 @@ export default function KPICards({
   return (
     <div className="grid grid-cols-5 gap-4">
       {cards.map((card) => {
-        const { label, sublabel, value, icon: Icon, iconBg, iconColor, leftBorder, waveColor, filterValue, href } = card;
+        const { label, sublabel, value, icon: Icon, iconBg, iconColor, leftBorder, filterValue, href } = card;
         const isClickable = Boolean(filterValue || href);
         const isActive = Boolean(filterValue && estadoActivo === filterValue);
-        const gradientId = `wave-${label.replace(/\s+/g, "-").toLowerCase()}`;
         return (
           <div
             key={label}
@@ -138,8 +139,8 @@ export default function KPICards({
           >
             <div className="flex items-center gap-4">
               {/* Icono en círculo claro */}
-              <div className={`shrink-0 flex items-center justify-center w-14 h-14 rounded-full ${iconBg}`}>
-                <Icon size={24} className={iconColor} />
+              <div className={`shrink-0 flex items-center justify-center w-16 h-16 rounded-full ${iconBg}`}>
+                <Icon size={30} className={iconColor} />
               </div>
 
               <div className="min-w-0">
@@ -148,29 +149,6 @@ export default function KPICards({
                 <p className="text-xs text-slate-400">{sublabel}</p>
               </div>
             </div>
-
-            {/* Línea de datos irregular, ascendente, sutil */}
-            <svg viewBox="0 0 200 40" preserveAspectRatio="none" className={`w-full h-6 ${waveColor}`}>
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M12,31 L24,27 L34,30 L46,21 L57,24 L68,14 L80,18 L92,9 L104,13 L116,7 L128,11 L140,5 L152,9 L164,4 L176,8 L188,3 L188,40 L12,40 Z"
-                fill={`url(#${gradientId})`}
-              />
-              <path
-                d="M12,31 L24,27 L34,30 L46,21 L57,24 L68,14 L80,18 L92,9 L104,13 L116,7 L128,11 L140,5 L152,9 L164,4 L176,8 L188,3"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.4"
-              />
-            </svg>
           </div>
         );
       })}

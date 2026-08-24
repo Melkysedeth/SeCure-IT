@@ -112,9 +112,8 @@ export default function AlertsKPICards({
 
   return (
     <div className="grid grid-cols-5 gap-4">
-      {cards.map(({ label, sublabel, value, icon: Icon, iconBg, iconColor, leftBorder, waveColor, filterKey, filterValue }) => {
+      {cards.map(({ label, sublabel, value, icon: Icon, iconBg, iconColor, leftBorder, filterKey, filterValue }) => {
         const isActive = filters?.[filterKey] === filterValue;
-        const gradientId = `wave-alert-${label.replace(/\s+/g, "-").toLowerCase()}`;
         return (
           <div
             key={label}
@@ -124,8 +123,8 @@ export default function AlertsKPICards({
           >
             <div className="flex items-center gap-4">
               {/* Icono en círculo claro */}
-              <div className={`shrink-0 flex items-center justify-center w-14 h-14 rounded-full ${iconBg}`}>
-                <Icon size={24} className={iconColor} />
+              <div className={`shrink-0 flex items-center justify-center w-16 h-16 rounded-full ${iconBg}`}>
+                <Icon size={30} className={iconColor} />
               </div>
 
               <div className="min-w-0">
@@ -134,29 +133,6 @@ export default function AlertsKPICards({
                 <p className="text-xs text-slate-400">{sublabel}</p>
               </div>
             </div>
-
-            {/* Línea de datos irregular, ascendente, sutil */}
-            <svg viewBox="0 0 200 40" preserveAspectRatio="none" className={`w-full h-6 ${waveColor}`}>
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M12,31 L24,27 L34,30 L46,21 L57,24 L68,14 L80,18 L92,9 L104,13 L116,7 L128,11 L140,5 L152,9 L164,4 L176,8 L188,3 L188,40 L12,40 Z"
-                fill={`url(#${gradientId})`}
-              />
-              <path
-                d="M12,31 L24,27 L34,30 L46,21 L57,24 L68,14 L80,18 L92,9 L104,13 L116,7 L128,11 L140,5 L152,9 L164,4 L176,8 L188,3"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.4"
-              />
-            </svg>
           </div>
         );
       })}

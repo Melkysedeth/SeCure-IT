@@ -11,7 +11,7 @@ import ConfirmDialog from "../common/ConfirmDialog";
 import { useAlerts } from "../../hooks/useAlerts";
 import { mapAlerta } from "../../lib/alerts";
 
-export type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
+export type Estado = "en_linea" | "sin_conexion" | "fuera_sede" | "nunca_reportado";
 
 export interface Activo {
   id: string;
@@ -77,6 +77,7 @@ export const estadoBadge: Record<Estado, { label: string; className: string }> =
   en_linea: { label: "En línea", className: "bg-green-100 text-green-700" },
   sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600" },
   fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
+  nunca_reportado: { label: "Nunca reportado", className: "bg-slate-200 text-slate-600" },
 };
 
 const tipoConfig: Record<string, { icon: typeof Laptop; label: string; color: string }> = {

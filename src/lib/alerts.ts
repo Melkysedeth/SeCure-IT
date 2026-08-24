@@ -18,9 +18,13 @@ export interface AlertaRaw {
   nombre_equipo: string | null;
   nombre_responsable: string | null;
   departamento: string | null;
+  latitud?: number | null;
+  longitud?: number | null;
 }
 
 // Forma normalizada que usa la UI
+export type OrigenActivo = "laptop" | "movil";
+
 export interface Alerta {
   id: string;
   activoId: string | null;
@@ -34,11 +38,14 @@ export interface Alerta {
   nombreEquipo: string;
   responsable: string;
   departamento: string;
+  origen: OrigenActivo;
+  lat: number | null;
+  lng: number | null;
 }
 
 const SEVERIDADES_VALIDAS: Severidad[] = ["critica", "alta", "media", "baja"];
 
-export function mapAlerta(raw: AlertaRaw): Alerta {
+export function mapAlerta(raw: AlertaRaw, origen: OrigenActivo = "laptop"): Alerta {
   const severidadNormalizada = (raw.severidad ?? "").toLowerCase().trim();
   const severidad: Severidad = (SEVERIDADES_VALIDAS as string[]).includes(severidadNormalizada) ? (severidadNormalizada as Severidad) : "media";
 
@@ -58,6 +65,9 @@ export function mapAlerta(raw: AlertaRaw): Alerta {
     nombreEquipo: raw.nombre_equipo ?? "Sin nombre",
     responsable: raw.nombre_responsable ?? "Sin asignar",
     departamento: raw.departamento ?? "",
+    origen,
+    lat: raw.latitud ?? null,
+    lng: raw.longitud ?? null,
   };
 }
 

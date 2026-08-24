@@ -10,12 +10,20 @@ export interface AlertaOpcion {
 export function useAlertsFilterOptions() {
   const fetcher = useMemo(() => {
     return async () => {
-      const { data, error } = await supabase.from("alertas_filtros_opciones").select("*");
-      return { data: (data ?? []) as AlertaOpcion[], error: error?.message ?? null };
+      const [laptops, moviles] = await Promise.all([
+        supabase.from("alertas_filtros_opciones").select("*"),
+        supabase.from("alertas_moviles").select("tipo"),
+      ]);
+
+      const laptopOpts = (laptops.data ?? []) as AlertaOpcion[];
+      const movilOpts = ((moviles.data ?? []) as { tipo: string | null }[]).map((r) => ({ tipo: r.tipo, ciudad: null }));
+
+      const error = laptops.error?.message ?? moviles.error?.message ?? null;
+      return { data: [...laptopOpts, ...movilOpts], error };
     };
   }, []);
 
-  const { data, loading, error } = useCachedQuery<AlertaOpcion[]>("alertas_filtros_opciones", fetcher);
+  const { data, loading, error } = useCachedQuery<AlertaOpcion[]>("alertas_filtros_opciones_todas", fetcher);
 
   return { data: data ?? [], loading, error };
 }
