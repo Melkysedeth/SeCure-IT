@@ -49,6 +49,8 @@ export interface Activo {
   departamento: string | null;
 
   fecha_registro: string;
+  fecha_compra: string | null;
+  costo: number | null;
   activo: boolean;
   observaciones: string | null;
 }
@@ -93,6 +95,9 @@ export interface NuevoActivoForm {
   memoria_ram: string;
   almacenamiento: string;
   direccion_mac: string;
+  fecha_compra: string;
+  costo: string;
   imei?: string;
   numero_telefono?: string;
+
 }

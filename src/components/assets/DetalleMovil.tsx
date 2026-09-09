@@ -5,6 +5,8 @@ import "leaflet/dist/leaflet.css";
 import {
     ChevronRight, Smartphone, Tablet, MoreVertical, Trash2, MapPin,
     Pencil, Battery, Globe, HardDrive, Phone, User, Calendar, Bell,
+    Hash, Fingerprint, Tag, Building2, IdCard, UserCheck, Signal,
+    MemoryStick, Compass, DollarSign,
 } from "lucide-react";
 import { useAlertsMoviles } from "../../hooks/useAlertsMoviles";
 import RegisterAssetModal from "./RegisterAssetModal";
@@ -42,6 +44,22 @@ function formatDateTime(iso: string | null): string {
     });
 }
 
+function formatMoney(value: number | null): string {
+    if (value == null) return "—";
+    return new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        maximumFractionDigits: 0,
+    }).format(value);
+}
+
+function formatDateOnly(iso: string | null): string {
+    if (!iso) return "—";
+    const [year, month, day] = iso.split("-");
+    if (!year || !month || !day) return "—";
+    return `${day}/${month}/${year}`;
+}
+
 interface MovilRaw {
     id: string;
     codigo: string;
@@ -49,6 +67,7 @@ interface MovilRaw {
     nombre_dispositivo: string | null;
     marca: string | null;
     modelo: string | null;
+    serial: string | null;
     android_version: string | null;
     ram_total_mb: number | null;
     ram_disponible_mb: number | null;
@@ -70,6 +89,8 @@ interface MovilRaw {
     longitud: number | null;
     timestamp_reporte: string | null;
     estado: string | null;
+    fecha_compra: string | null;
+    costo: number | null;
 }
 
 function mapDetalle(a: MovilRaw) {
@@ -79,12 +100,15 @@ function mapDetalle(a: MovilRaw) {
         nombre: a.nombre_dispositivo ?? "Sin nombre",
         marca: a.marca ?? "—",
         modelo: a.modelo ?? "—",
+        serial: a.serial ?? "—",
         androidVersion: a.android_version ? `Android ${a.android_version}` : "—",
         estado: (a.estado as Estado) ?? "sin_conexion",
         ramTotal: a.ram_total_mb != null ? `${a.ram_total_mb} MB` : "—",
         ramDisponible: a.ram_disponible_mb != null ? `${a.ram_disponible_mb} MB` : "—",
         almTotal: a.almacenamiento_total_gb != null ? `${a.almacenamiento_total_gb} GB` : "—",
         almLibre: a.almacenamiento_libre_gb != null ? `${a.almacenamiento_libre_gb} GB` : "—",
+        fechaCompra: formatDateOnly(a.fecha_compra),
+        costo: formatMoney(a.costo),
         usuario: a.nombre_responsable ?? a.usuario_asignado ?? "Sin asignar",
         usuarioReporta: a.usuario_asignado ?? "Sin datos",
         departamento: a.departamento ?? "—",
@@ -101,15 +125,6 @@ function mapDetalle(a: MovilRaw) {
         ultimaConexion: timeAgo(a.timestamp_reporte),
         fechaUltimaConexion: formatDateTime(a.timestamp_reporte),
     };
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-            <span className="text-xs text-[#9898a0]">{label}</span>
-            <span className="text-sm text-[#3d3d42] font-medium text-right">{value}</span>
-        </div>
-    );
 }
 
 function InfoRowIcon({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
@@ -159,7 +174,7 @@ export default function DetalleMovil({ raw, codigo, refetch }: Props) {
         codigo: raw.codigo,
         nombre_equipo: raw.nombre_dispositivo ?? "",
         tipo: (raw.tipo as any) ?? "",
-        serial: "",
+        serial: raw.serial ?? "",
         marca: raw.marca ?? "",
         modelo: raw.modelo ?? "",
         sistema_op: "",
@@ -177,6 +192,8 @@ export default function DetalleMovil({ raw, codigo, refetch }: Props) {
         direccion_mac: "",
         imei: raw.imei ?? "",
         numero_telefono: raw.numero_telefono ?? "",
+        fecha_compra: raw.fecha_compra ?? "",
+        costo: raw.costo != null ? String(raw.costo) : "",
     };
 
     async function handleGuardarEdicion(data: NuevoActivoForm) {
@@ -330,32 +347,35 @@ export default function DetalleMovil({ raw, codigo, refetch }: Props) {
                         <div className="grid grid-cols-3 gap-5 items-start">
                             <div className="flex flex-col gap-5">
                                 <SectionCard title="Información del dispositivo" icon={IconTipo}>
-                                    <InfoRow label="Código" value={activo.codigo} />
-                                    <InfoRow label="Marca / Modelo" value={`${activo.marca} ${activo.modelo}`} />
-                                    <InfoRow label="Versión de Android" value={activo.androidVersion} />
-                                    <InfoRow label="Departamento" value={activo.departamento} />
-                                    <InfoRow label="Fecha de registro" value={activo.fechaRegistro} />
+                                    <InfoRowIcon icon={Hash} label="Código" value={activo.codigo} />
+                                    <InfoRowIcon icon={Fingerprint} label="Serial" value={activo.serial} />
+                                    <InfoRowIcon icon={Tag} label="Marca / Modelo" value={`${activo.marca} ${activo.modelo}`} />
+                                    <InfoRowIcon icon={Smartphone} label="Versión de Android" value={activo.androidVersion} />
+                                    <InfoRowIcon icon={Building2} label="Departamento" value={activo.departamento} />
+                                    <InfoRowIcon icon={Calendar} label="Fecha de registro" value={activo.fechaRegistro} />
+                                    <InfoRowIcon icon={Calendar} label="Fecha de compra" value={activo.fechaCompra} />
+                                    <InfoRowIcon icon={DollarSign} label="Costo del equipo" value={activo.costo} />
                                 </SectionCard>
 
                                 <SectionCard title="Responsable" icon={User}>
-                                    <InfoRow label="Nombre" value={activo.usuario} />
-                                    <InfoRow label="Documento" value={activo.documento} />
-                                    <InfoRow label="Usuario que reporta (agente)" value={activo.usuarioReporta} />
+                                    <InfoRowIcon icon={User} label="Nombre" value={activo.usuario} />
+                                    <InfoRowIcon icon={IdCard} label="Documento" value={activo.documento} />
+                                    <InfoRowIcon icon={UserCheck} label="Usuario que reporta (agente)" value={activo.usuarioReporta} />
                                 </SectionCard>
                             </div>
 
                             <div className="flex flex-col gap-5">
                                 <SectionCard title="Datos de línea" icon={Phone}>
-                                    <InfoRow label="IMEI" value={activo.imei} />
-                                    <InfoRow label="Operador" value={activo.operador} />
-                                    <InfoRow label="Número de teléfono" value={activo.numeroTelefono} />
+                                    <InfoRowIcon icon={Hash} label="IMEI" value={activo.imei} />
+                                    <InfoRowIcon icon={Signal} label="Operador" value={activo.operador} />
+                                    <InfoRowIcon icon={Phone} label="Número de teléfono" value={activo.numeroTelefono} />
                                 </SectionCard>
 
                                 <SectionCard title="Almacenamiento" icon={HardDrive}>
-                                    <InfoRow label="RAM total" value={activo.ramTotal} />
-                                    <InfoRow label="RAM disponible" value={activo.ramDisponible} />
-                                    <InfoRow label="Almacenamiento total" value={activo.almTotal} />
-                                    <InfoRow label="Almacenamiento libre" value={activo.almLibre} />
+                                    <InfoRowIcon icon={MemoryStick} label="RAM total" value={activo.ramTotal} />
+                                    <InfoRowIcon icon={MemoryStick} label="RAM disponible" value={activo.ramDisponible} />
+                                    <InfoRowIcon icon={HardDrive} label="Almacenamiento total" value={activo.almTotal} />
+                                    <InfoRowIcon icon={HardDrive} label="Almacenamiento libre" value={activo.almLibre} />
                                 </SectionCard>
                             </div>
 
@@ -371,14 +391,13 @@ export default function DetalleMovil({ raw, codigo, refetch }: Props) {
                                     ) : (
                                         <div className="h-48 rounded-lg bg-gray-50 flex items-center justify-center mb-3 text-xs text-[#9898a0]">Sin coordenadas registradas todavía</div>
                                     )}
-                                    <InfoRow label="Latitud" value={activo.lat !== null ? activo.lat.toFixed(6) : "—"} />
-                                    <InfoRow label="Longitud" value={activo.lng !== null ? activo.lng.toFixed(6) : "—"} />
+                                    <InfoRowIcon icon={Compass} label="Latitud" value={activo.lat !== null ? activo.lat.toFixed(6) : "—"} />
+                                    <InfoRowIcon icon={Compass} label="Longitud" value={activo.lng !== null ? activo.lng.toFixed(6) : "—"} />
                                     <InfoRowIcon icon={Globe} label="Dirección IP" value={activo.ipLocal} />
                                 </SectionCard>
                             </div>
                         </div>
                     )}
-
                     {tab === "historial" && (
                         <div className="flex flex-col gap-5">
                             <div className="bg-white rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.07)] border border-gray-100/70">

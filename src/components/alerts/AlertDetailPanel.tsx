@@ -37,7 +37,7 @@ export default function AlertDetailPanel({ alerta, onClose, onUpdated }: Props) 
   }
 
   return (
-    <aside className="w-[340px] shrink-0 bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col overflow-y-auto">
+    <aside className="w-85 shrink-0 bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col overflow-y-auto">
       <div className="p-5 border-b border-gray-100">
         <div className="flex items-start justify-between mb-2">
           <h2 className="text-[15px] font-semibold text-[#3d3d42] pr-2">{alerta.tipo}</h2>

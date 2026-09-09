@@ -5,9 +5,12 @@ import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
     ChevronRight, Laptop, MoreVertical, Trash2, MapPin, Cpu,
-    Network, Pencil, Monitor, Calendar, Bell, Wifi, WifiOff, Battery, Globe
+    Network, Pencil, Monitor, Calendar, Bell, Wifi, WifiOff, Battery, Globe,
+    Hash, Fingerprint, Tag, Building2, User, MemoryStick, HardDrive,
+    Usb, Keyboard, Mouse, Headphones, DollarSign,
 } from "lucide-react";
 import { useAlerts } from "../../hooks/useAlerts";
+import { useAssetPeripherals } from "../../hooks/useAssetPeripherals";
 import { useSedes } from "../../hooks/useSedes";
 import TrasladoTemporalModal from "./TrasladoTemporalModal";
 import { ArrowLeftRight } from "lucide-react";
@@ -15,30 +18,34 @@ import RegisterAssetModal from "./RegisterAssetModal";
 import { darDeBajaActivo, actualizarActivo, asignarTrasladoTemporal, cancelarTrasladoTemporal } from "../../lib/assets";
 import type { NuevoActivoForm, TipoDocumento } from "../../types";
 
-type Estado = "en_linea" | "sin_conexion" | "fuera_sede";
+type Estado = "en_linea" | "sin_conexion" | "fuera_sede" | "nunca_reportado";
 
 const estadoColor: Record<Estado, string> = {
     en_linea: "#22c55e",
     sin_conexion: "#ef4444",
     fuera_sede: "#f97316",
+    nunca_reportado: "#64748b",
 };
 
 const estadoLabel: Record<Estado, string> = {
     en_linea: "En línea",
     sin_conexion: "Sin conexión",
     fuera_sede: "Fuera de sede",
+    nunca_reportado: "Nunca reportado",
 };
 
 const estadoBadgeClass: Record<Estado, string> = {
     en_linea: "bg-green-100 text-green-700",
     sin_conexion: "bg-red-100 text-red-600",
     fuera_sede: "bg-orange-100 text-orange-600",
+    nunca_reportado: "bg-slate-200 text-slate-600",
 };
 
 const estadoIcon: Record<Estado, React.ElementType> = {
     en_linea: Wifi,
     sin_conexion: WifiOff,
     fuera_sede: MapPin,
+    nunca_reportado: WifiOff,
 };
 
 function timeAgo(iso: string | null): string {
@@ -66,6 +73,22 @@ function formatDateTime(iso: string | null): string {
     });
 }
 
+function formatMoney(value: number | null): string {
+    if (value == null) return "—";
+    return new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        maximumFractionDigits: 0,
+    }).format(value);
+}
+
+function formatDateOnly(iso: string | null): string {
+    if (!iso) return "—";
+    const [year, month, day] = iso.split("-");
+    if (!year || !month || !day) return "—";
+    return `${day}/${month}/${year}`;
+}
+
 interface ActivoRaw {
     id: string;
     codigo: string;
@@ -80,6 +103,9 @@ interface ActivoRaw {
     procesador: string | null;
     memoria_ram: string | null;
     almacenamiento: string | null;
+    almacenamiento_disponible: string | null;
+    fecha_compra: string | null;
+    costo: number | null;
     direccion_mac: string | null;
     nombre_responsable: string | null;
     usuario_activo: string | null;
@@ -118,6 +144,9 @@ function mapDetalle(a: ActivoRaw) {
         procesador: a.procesador ?? "—",
         memoria_ram: a.memoria_ram ?? "—",
         almacenamiento: a.almacenamiento ?? "—",
+        almacenamiento_disponible: a.almacenamiento_disponible ?? "—",
+        fecha_compra: formatDateOnly(a.fecha_compra),
+        costo: formatMoney(a.costo),
         direccion_mac: a.direccion_mac ?? "—",
         usuario: a.nombre_responsable ?? a.usuario_activo ?? "Sin asignar",
         usuario_reporta: a.usuario_activo ?? "Sin datos",
@@ -127,7 +156,7 @@ function mapDetalle(a: ActivoRaw) {
         red_wifi: a.red_wifi ?? "—",
         sistema_op: a.sistema_op ?? "—",
         ciudad: a.ubicacion_ciudad ?? a.ciudad_asignada ?? "—",
-        sede: a.ciudad_asignada ?? "—",
+        sede: a.sede_nombre ?? "—",
         lat: a.latitud ?? null,
         lng: a.longitud ?? null,
         bateria: a.bateria ?? null,
@@ -186,6 +215,15 @@ export default function DetalleLaptop({ raw, codigo, refetch }: Props) {
     const activo = useMemo(() => mapDetalle(raw), [raw]);
     const { data: alertasActivo, loading: loadingAlertas } = useAlerts({ activoId: raw?.id });
 
+    const { data: perifericos, loading: loadingPerifericos } = useAssetPeripherals(raw?.id);
+
+    const iconoPeriferico: Record<string, React.ElementType> = {
+        teclado: Keyboard,
+        mouse: Mouse,
+        audio: Headphones,
+        monitor: Monitor,
+    };
+
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -218,6 +256,8 @@ export default function DetalleLaptop({ raw, codigo, refetch }: Props) {
             memoria_ram: raw.memoria_ram ?? "",
             almacenamiento: raw.almacenamiento ?? "",
             direccion_mac: raw.direccion_mac ?? "",
+            fecha_compra: raw.fecha_compra ?? "",
+            costo: raw.costo != null ? String(raw.costo) : "",
         }
         : null;
 
@@ -256,18 +296,17 @@ export default function DetalleLaptop({ raw, codigo, refetch }: Props) {
     return (
         <div className="flex flex-col gap-6">
             {/* Breadcrumb */}
-            <div className="flex items-center gap-1.5 text-sm text-[#9898a0]">
-                <Link to="/activos" className="hover:text-[#519d99] transition-colors">
-                    Activos
-                </Link>
-                <ChevronRight size={14} />
-                <span className="text-[#3d3d42] font-medium">
-                    {activo.nombre} ({codigo})
-                </span>
-            </div>
-
-
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 flex flex-col gap-6">
+                <div className="flex items-center gap-1.5 text-sm text-[#9898a0]">
+                    <Link to="/activos" className="hover:text-[#519d99] transition-colors">
+                        Activos
+                    </Link>
+                    <ChevronRight size={14} />
+                    <span className="text-[#3d3d42] font-medium">
+                        {activo.nombre} ({codigo})
+                    </span>
+                </div>
+
                 {/* Header del activo */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -432,51 +471,75 @@ export default function DetalleLaptop({ raw, codigo, refetch }: Props) {
                 <div className="bg-[#f8f9fb] rounded-2xl shadow-md border border-gray-100 p-6 -mt-px relative z-0">
 
                     {tab === "info" && (
-                        <div className="grid grid-cols-3 gap-5 items-start">
-                            <div className="flex flex-col gap-5">
-                                <SectionCard title="Información del equipo" icon={Monitor}>
-                                    <InfoRow label="Código" value={activo.codigo} />
-                                    <InfoRow label="Número de serie" value={activo.serial} />
-                                    <InfoRow label="Marca / Modelo" value={`${activo.marca} ${activo.modelo}`} />
-                                    <InfoRow label="Tipo de activo" value={activo.tipo} />
-                                    <InfoRow label="Departamento" value={activo.departamento} />
-                                    <InfoRow label="Fecha de registro" value={activo.fecha_registro} />
-                                    <InfoRow label="Sede asignada" value={activo.sede_asignada} />
-                                    <InfoRow label="Usuario que reporta (agente)" value={activo.usuario_reporta} />
-                                </SectionCard>
-                            </div>
+                        <div className="flex flex-col gap-5">
+                            <div className="grid grid-cols-3 gap-5 items-start">
+                                <div className="flex flex-col gap-5">
+                                    <SectionCard title="Información del equipo" icon={Monitor}>
+                                        <InfoRowIcon icon={Hash} label="Código" value={activo.codigo} />
+                                        <InfoRowIcon icon={Fingerprint} label="Número de serie" value={activo.serial} />
+                                        <InfoRowIcon icon={Tag} label="Marca / Modelo" value={`${activo.marca} ${activo.modelo}`} />
+                                        <InfoRowIcon icon={Laptop} label="Tipo de activo" value={activo.tipo.toUpperCase()} />
+                                        <InfoRowIcon icon={Building2} label="Departamento" value={activo.departamento} />
+                                        <InfoRowIcon icon={Calendar} label="Fecha de registro" value={activo.fecha_registro} />
+                                        <InfoRowIcon icon={Calendar} label="Fecha de compra" value={activo.fecha_compra} />
+                                        <InfoRowIcon icon={DollarSign} label="Costo del equipo" value={activo.costo} />
+                                        <InfoRowIcon icon={MapPin} label="Sede asignada" value={activo.sede_asignada} />
+                                        <InfoRowIcon icon={User} label="Usuario que reporta" value={activo.usuario_reporta} />
+                                    </SectionCard>
 
-                            <div className="flex flex-col gap-5">
-                                <SectionCard title="Hardware" icon={Cpu}>
-                                    <InfoRow label="Procesador" value={activo.procesador} />
-                                    <InfoRow label="Memoria RAM" value={activo.memoria_ram} />
-                                    <InfoRow label="Almacenamiento" value={activo.almacenamiento} />
-                                    <InfoRow label="Dirección MAC" value={activo.direccion_mac} />
-                                </SectionCard>
+                                    <SectionCard title="Hardware" icon={Cpu}>
+                                        <InfoRowIcon icon={Cpu} label="Procesador" value={activo.procesador} />
+                                        <InfoRowIcon icon={MemoryStick} label="Memoria RAM" value={activo.memoria_ram} />
+                                        <InfoRowIcon icon={HardDrive} label="Almacenamiento" value={activo.almacenamiento} />
+                                        <InfoRowIcon icon={HardDrive} label="Espacio disponible" value={activo.almacenamiento_disponible} />
+                                        <InfoRowIcon icon={Network} label="Dirección MAC" value={activo.direccion_mac} />
+                                    </SectionCard>
+                                </div>
 
-                                <SectionCard title="Información rápida" icon={Network}>
-                                    <InfoRowIcon icon={Battery} label="Batería" value={activo.bateria !== null ? `${activo.bateria}%` : "N/A"} />
-                                    <InfoRowIcon icon={Globe} label="Dirección IP" value={activo.ip_local} />
-                                    <InfoRowIcon icon={Wifi} label="Red WiFi" value={activo.red_wifi} />
-                                    <InfoRowIcon icon={Monitor} label="Sistema operativo" value={activo.sistema_op} />
-                                </SectionCard>
-                            </div>
+                                <div className="flex flex-col gap-5">
+                                    <SectionCard title="Información rápida" icon={Network}>
+                                        <InfoRowIcon icon={Battery} label="Batería" value={activo.bateria !== null ? `${activo.bateria}%` : "N/A"} />
+                                        <InfoRowIcon icon={Globe} label="Dirección IP" value={activo.ip_local} />
+                                        <InfoRowIcon icon={Wifi} label="Red WiFi" value={activo.red_wifi} />
+                                        <InfoRowIcon icon={Monitor} label="Sistema operativo" value={activo.sistema_op} />
+                                    </SectionCard>
 
-                            <div className="flex flex-col gap-5">
-                                <SectionCard title="Ubicación actual" icon={MapPin}>
-                                    {activo.lat !== null && activo.lng !== null ? (
-                                        <div className="h-48 rounded-lg overflow-hidden mb-3">
-                                            <MapContainer center={[activo.lat, activo.lng]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
-                                                <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                                <CircleMarker center={[activo.lat, activo.lng]} radius={10} pathOptions={{ fillColor: estadoColor[activo.estado], fillOpacity: 0.8, color: "white", weight: 2 }} />
-                                            </MapContainer>
-                                        </div>
-                                    ) : (
-                                        <div className="h-48 rounded-lg bg-gray-50 flex items-center justify-center mb-3 text-xs text-[#9898a0]">Sin coordenadas registradas</div>
-                                    )}
-                                    <InfoRow label="Ciudad" value={activo.ciudad} />
-                                    <InfoRow label="Sede" value={activo.sede} />
-                                </SectionCard>
+                                    <SectionCard title="Periféricos" icon={Usb}>
+                                        {loadingPerifericos && <p className="text-xs text-[#9898a0] py-2">Cargando periféricos...</p>}
+                                        {!loadingPerifericos && perifericos.length === 0 && (
+                                            <p className="text-xs text-[#9898a0] py-2">No se han detectado periféricos externos.</p>
+                                        )}
+                                        {!loadingPerifericos && perifericos.map((p, idx) => {
+                                            const Icon = iconoPeriferico[p.tipo] ?? Usb;
+                                            return (
+                                                <InfoRowIcon
+                                                    key={`${p.tipo}-${p.nombre}-${idx}`}
+                                                    icon={Icon}
+                                                    label={p.fabricante ? `${p.nombre} (${p.fabricante})` : p.nombre}
+                                                    value={p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)}
+                                                />
+                                            );
+                                        })}
+                                    </SectionCard>
+                                </div>
+
+                                <div className="flex flex-col gap-5">
+                                    <SectionCard title="Ubicación actual" icon={MapPin}>
+                                        {activo.lat !== null && activo.lng !== null ? (
+                                            <div className="h-48 rounded-lg overflow-hidden mb-3">
+                                                <MapContainer center={[activo.lat, activo.lng]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+                                                    <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                    <CircleMarker center={[activo.lat, activo.lng]} radius={10} pathOptions={{ fillColor: estadoColor[activo.estado], fillOpacity: 0.8, color: "white", weight: 2 }} />
+                                                </MapContainer>
+                                            </div>
+                                        ) : (
+                                            <div className="h-48 rounded-lg bg-gray-50 flex items-center justify-center mb-3 text-xs text-[#9898a0]">Sin coordenadas registradas</div>
+                                        )}
+                                        <InfoRow label="Ciudad" value={activo.ciudad} />
+                                        <InfoRow label="Latitud" value={activo.lat !== null ? activo.lat.toFixed(6) : "—"} />
+                                        <InfoRow label="Longitud" value={activo.lng !== null ? activo.lng.toFixed(6) : "—"} />
+                                    </SectionCard>
+                                </div>
                             </div>
                         </div>
                     )}

@@ -42,7 +42,10 @@ export default function Header() {
   }
 
   const { data: alertasRaw } = useAlerts();
-  const alertasPendientes = useMemo(() => alertasRaw.map(mapAlerta).filter((a) => a.estado !== "Resuelta"), [alertasRaw]);
+  const alertasPendientes = useMemo(
+    () => alertasRaw.map((raw) => mapAlerta(raw)).filter((a) => a.estado !== "Resuelta"),
+    [alertasRaw]
+  );
   const pendientesCount = alertasPendientes.length;
   const alertasPreview = alertasPendientes.slice(0, 5);
 
@@ -66,9 +69,9 @@ export default function Header() {
   const initial = emailLabel[0].toUpperCase();
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-6 px-6 sticky top-0 z-40">
+    <header className="h-20 bg-white border-b border-slate-200 flex items-center gap-6 px-6 sticky top-0 z-40">
       {/* Título de la sección actual */}
-      <h1 className="text-[15px] font-semibold text-slate-700 whitespace-nowrap hidden md:block">{title}</h1>
+      <h1 className="text-lg font-semibold text-slate-700 whitespace-nowrap hidden md:block">{title}</h1>
 
       {/* Barra de búsqueda */}
       <div className="flex-1 max-w-md">

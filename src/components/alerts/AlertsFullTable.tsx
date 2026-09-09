@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, MoreHorizontal, Laptop, Smartphone, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAllAlerts } from "../../hooks/useAllAlerts";
+import { useAssets } from "../../hooks/useAssets";
 import { SEVERITY_META, ESTADO_META, timeAgo, formatFecha, getInitials, getAvatarColor, getPageWindow, type Alerta, type EstadoAlerta } from "../../lib/alerts";
 import type { AlertsFilters } from "./AlertsFilterBar";
 import AlertDetailPanel from "./AlertDetailPanel";
@@ -15,9 +16,23 @@ export default function AlertsFullTable({ filters }: { filters: AlertsFilters })
   const [overrides, setOverrides] = useState<Record<string, EstadoAlerta>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const { data: activos } = useAssets();
+
+  const estadoPorActivo = useMemo(() => {
+    const map = new Map<string, string>();
+    activos.forEach((a: any) => map.set(a.id, a.estado));
+    return map;
+  }, [activos]);
+
   const mapped = useMemo(() => {
-    return data.map((a) => (overrides[a.id] ? { ...a, estado: overrides[a.id] } : a));
-  }, [data, overrides]);
+    return data.map((a) => {
+      const base = overrides[a.id] ? { ...a, estado: overrides[a.id] } : a;
+      const esNuncaReportado = a.activoId != null && estadoPorActivo.get(a.activoId) === "nunca_reportado";
+      return esNuncaReportado
+        ? { ...base, tipo: "Nunca reportado", descripcion: "El agente no está instalado en este equipo." }
+        : base;
+    });
+  }, [data, overrides, estadoPorActivo]);
 
   useEffect(() => {
     setPage(1);

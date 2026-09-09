@@ -24,6 +24,8 @@ export async function actualizarActivo(activoId: string, data: NuevoActivoForm):
       departamento: data.departamento,
       sede_id: data.sede_id,
       observaciones: data.observaciones || null,
+      fecha_compra: data.fecha_compra || null,
+      costo: data.costo ? Number(data.costo) : null,
     })
     .eq("id", activoId);
 
@@ -96,6 +98,7 @@ export async function actualizarActivoMovil(id: string, data: NuevoActivoForm): 
     .update({
       codigo: data.codigo,
       tipo: data.tipo,
+      serial: data.serial || null,
       tipo_documento: data.tipo_documento || null,
       numero_documento: data.numero_documento || null,
       nombre_responsable: data.nombre_responsable || null,
@@ -103,6 +106,8 @@ export async function actualizarActivoMovil(id: string, data: NuevoActivoForm): 
       observaciones: data.observaciones || null,
       imei: data.imei || null,
       numero_telefono: data.numero_telefono || null,
+      fecha_compra: data.fecha_compra || null,
+      costo: data.costo ? Number(data.costo) : null,
     })
     .eq("id", id)
     .select();

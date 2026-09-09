@@ -71,7 +71,7 @@ export function AlertasRecientes() {
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-105 flex flex-col">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
         <h2 className="text-sm font-semibold text-[#3d3d42]">Últimas Alertas</h2>
-        <Link to="/historial" className="text-xs text-[#519d99] font-medium hover:underline">
+        <Link to="/alertas" className="text-xs text-[#519d99] font-medium hover:underline">
           Ver todas
         </Link>
       </div>

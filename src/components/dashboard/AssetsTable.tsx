@@ -19,11 +19,11 @@ interface Activo {
   lng: number | null;
 }
 
-const estadoBadge: Record<Estado, { label: string; className: string }> = {
-  en_linea: { label: "En línea", className: "bg-green-100 text-green-700" },
-  sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600" },
-  fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
-  nunca_reportado: { label: "Nunca reportado", className: "bg-slate-200 text-slate-600" },
+export const estadoBadge: Record<Estado, { label: string; className: string }> = {
+  en_linea: { label: "En línea", className: "bg-green-100 text-green-700 rounded-md px-2 py-0.5" },
+  sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600 rounded-md px-2 py-0.5" },
+  fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600 rounded-md px-2 py-0.5" },
+  nunca_reportado: { label: "Nunca reportado", className: "bg-slate-200 text-slate-600 rounded-md px-2 py-0.5" },
 };
 
 const tipoConfig: Record<string, { icon: typeof Laptop; label: string; color: string }> = {
@@ -154,7 +154,7 @@ export default function AssetsTable() {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`px-2 py-1 rounded-full text-[11px] font-medium ${badge.className}`}>{badge.label}</span>
+                    <span className={`px-2 py-1 rounded-md text-[11px] font-medium ${badge.className}`}>{badge.label}</span>
                   </td>
                   <td className="px-5 py-3">{activo.bateria > 0 ? <BateriaBar value={activo.bateria} /> : <span className="text-xs text-gray-400">—</span>}</td>
                   <td className="px-5 py-3 text-[#686971] text-xs">{activo.ultima_conexion}</td>

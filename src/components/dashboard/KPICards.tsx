@@ -1,8 +1,6 @@
-import { Monitor, Wifi, MapPin, WifiOff, Bell } from "lucide-react";
+import { Monitor, Wifi, MapPin, WifiOff, HelpCircle } from "lucide-react";
 import { useMemo } from "react";
 import { useAssets } from "../../hooks/useAssets";
-import { useAllAlerts } from "../../hooks/useAllAlerts";
-import { DEFAULT_ALERTS_FILTERS } from "../alerts/AlertsFilterBar";
 import { useNavigate } from "react-router-dom";
 
 interface CardDef {
@@ -18,13 +16,12 @@ interface CardDef {
   href?: string;
 }
 
-function buildCards(data: ReturnType<typeof useAssets>["data"], alertasActivas: number): CardDef[] {
+function buildCards(data: ReturnType<typeof useAssets>["data"]): CardDef[] {
   const total = data.length;
   const enLinea = data.filter((a: any) => a.estado === "en_linea").length;
   const fueraDeSede = data.filter((a: any) => a.estado === "fuera_sede").length;
-  const sinConexion = data.filter(
-    (a: any) => a.estado === "sin_conexion" || a.estado === "nunca_reportado"
-  ).length;
+  const sinConexion = data.filter((a: any) => a.estado === "sin_conexion").length;
+  const nuncaReportado = data.filter((a: any) => a.estado === "nunca_reportado").length;
   const pct = total > 0 ? ((enLinea / total) * 100).toFixed(1) : "0";
 
   return [
@@ -73,16 +70,15 @@ function buildCards(data: ReturnType<typeof useAssets>["data"], alertasActivas: 
       filterValue: "sin_conexion",
     },
     {
-      label: "Alertas activas",
-      sublabel: alertasActivas > 0 ? "Requieren atención" : "Todo en orden",
-      value: alertasActivas,
-      icon: Bell,
-      iconBg: "bg-yellow-100",
-      iconColor: "text-yellow-600",
-      leftBorder: "border-l-amber-400",
-      waveColor: "text-amber-400",
-      filterValue: null,
-      href: "/alertas",
+      label: "Nunca reportado",
+      sublabel: "Agente no instalado",
+      value: nuncaReportado,
+      icon: HelpCircle,
+      iconBg: "bg-slate-200",
+      iconColor: "text-slate-500",
+      leftBorder: "border-l-slate-400",
+      waveColor: "text-slate-400",
+      filterValue: "nunca_reportado",
     },
   ];
 }
@@ -95,11 +91,9 @@ export default function KPICards({
   onCardClick?: (estado: string) => void;
 } = {}) {
   const { data, loading } = useAssets();
-  const { data: alertas } = useAllAlerts({ page: 1, pageSize: 1000, filters: DEFAULT_ALERTS_FILTERS });
   const navigate = useNavigate();
 
-  const alertasActivas = useMemo(() => alertas.filter((a) => a.estado === "Activa").length, [alertas]);
-  const cards = useMemo(() => buildCards(data, alertasActivas), [data, alertasActivas]);
+  const cards = useMemo(() => buildCards(data), [data]);
 
   if (loading) {
     return (
@@ -138,11 +132,9 @@ export default function KPICards({
               } ${isActive ? "border-y-[#519d99] border-r-[#519d99] ring-2 ring-[#519d99]/25" : "border-y-gray-100 border-r-gray-100"}`}
           >
             <div className="flex items-center gap-4">
-              {/* Icono en círculo claro */}
               <div className={`shrink-0 flex items-center justify-center w-16 h-16 rounded-full ${iconBg}`}>
                 <Icon size={30} className={iconColor} />
               </div>
-
               <div className="min-w-0">
                 <p className="text-3xl leading-tight font-bold text-slate-800">{value}</p>
                 <p className="text-sm font-semibold text-slate-700 mt-1">{label}</p>

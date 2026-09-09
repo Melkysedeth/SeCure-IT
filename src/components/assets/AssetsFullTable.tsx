@@ -74,10 +74,10 @@ function getPageWindow(current: number, total: number): (number | "...")[] {
 }
 
 export const estadoBadge: Record<Estado, { label: string; className: string }> = {
-  en_linea: { label: "En línea", className: "bg-green-100 text-green-700" },
-  sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600" },
-  fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600" },
-  nunca_reportado: { label: "Nunca reportado", className: "bg-slate-200 text-slate-600" },
+  en_linea: { label: "En línea", className: "bg-green-100 text-green-700 rounded-md px-2 py-0.5" },
+  sin_conexion: { label: "Sin conexión", className: "bg-red-100 text-red-600 rounded-md px-2 py-0.5" },
+  fuera_sede: { label: "Fuera de sede", className: "bg-orange-100 text-orange-600 rounded-md px-2 py-0.5" },
+  nunca_reportado: { label: "Nunca reportado", className: "bg-slate-200 text-slate-600 rounded-md px-2 py-0.5" },
 };
 
 const tipoConfig: Record<string, { icon: typeof Laptop; label: string; color: string }> = {
@@ -215,14 +215,14 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
               <th className="px-4 py-2.5 text-left w-10 border-r border-slate-200">
                 <input type="checkbox" className="rounded border-gray-300 accent-[#519d99]" />
               </th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Código</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Nombre</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Usuario</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Ubicación</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Estado</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Batería</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Última conexión</th>
-              <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Acciones</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Código</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Nombre</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Usuario</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Ubicación</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Estado</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Batería</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide border-r border-slate-200">Última conexión</th>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-slate-600 uppercase tracking-wide">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -282,7 +282,7 @@ export default function AssetsFullTable({ filters, onEdit }: { filters: AssetsFi
                     <div className="flex flex-col gap-1 items-start">
                       <span className={`px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.className}`}>{badge.label}</span>
                       {pendientesPorActivo.has(activo.id) && (
-                        <span className="px-2 py-1 rounded-full text-[11px] font-medium whitespace-nowrap bg-amber-100 text-amber-700">Pendiente por confirmar</span>
+                        <span className="px-2 py-1 rounded-md text-[11px] font-medium whitespace-nowrap bg-amber-100 text-amber-700">Pendiente por confirmar</span>
                       )}
                     </div>
                   </td>

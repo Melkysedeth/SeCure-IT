@@ -9,7 +9,7 @@ export default function Alertas() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.05)] p-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-[#519d99]/10 p-2 rounded-lg">
             <Bell className="text-[#519d99]" size={22} />

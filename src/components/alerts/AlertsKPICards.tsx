@@ -44,7 +44,7 @@ function buildCards({ total, activas, criticas, altas, resueltas }: AlertsKPIDat
     },
     {
       label: "Sin Conexión",
-      sublabel: "Atención inmediata",
+      sublabel: "Historico Reportadas",
       value: criticas,
       icon: AlertTriangle,
       iconBg: "bg-orange-100",
@@ -56,7 +56,7 @@ function buildCards({ total, activas, criticas, altas, resueltas }: AlertsKPIDat
     },
     {
       label: "Fuera de Sede",
-      sublabel: "Alta prioridad",
+      sublabel: "Historico Reportadas",
       value: altas,
       icon: AlertTriangle,
       iconBg: "bg-amber-100",
