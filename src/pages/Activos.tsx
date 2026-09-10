@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { Monitor, Plus, Download } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAssets } from "../hooks/useAssets";
-import { useSedes } from "../hooks/useSedes";
 import KPICards from "../components/dashboard/KPICards";
 import AssetsFilterBar, { type AssetsFilters } from "../components/assets/AssetsFilterBar";
 import AssetsFullTable, { mapActivo, applyAssetsFilters, estadoBadge } from "../components/assets/AssetsFullTable";
@@ -16,7 +15,6 @@ export default function Activos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const { data: activosRaw, refetch } = useAssets();
-  const { data: sedes } = useSedes();
 
   const editTarget = editId ? activosRaw.find((a: any) => a.id === editId) ?? null : null;
 
@@ -157,25 +155,6 @@ export default function Activos() {
 
     if (activoError) {
       throw new Error(activoError.message);
-    }
-
-    // 2) Sembrar el primer reporte para que el activo aparezca de inmediato
-    //    con estado real en `activos_con_reporte`, en vez de quedar en blanco
-    //    hasta que el agente mande su primer reporte. Se usa la sede recién
-    //    asignada como punto de referencia (mismas coordenadas, estado
-    //    "en_linea") — no lleva bssid_conectado, así que el trigger de
-    //    geofencing no lo toca y respeta este estado inicial.
-    const sede = sedes.find((s) => s.id === data.sede_id);
-    const { error: reporteError } = await supabase.from("reportes").insert({
-      activo_id: activoId,
-      estado: "en_linea",
-      ubicacion_ciudad: sede?.ciudad ?? null,
-      latitud: sede?.latitud ?? null,
-      longitud: sede?.longitud ?? null,
-    });
-
-    if (reporteError) {
-      throw new Error(`El activo se registró, pero falló el reporte inicial: ${reporteError.message}`);
     }
 
     // Refresca la tabla al instante sin esperar el ciclo normal de cache.
